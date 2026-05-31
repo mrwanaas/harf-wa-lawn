@@ -142,211 +142,124 @@
   <script src="app.js"></script>
 
 <script>
-    let myTeam = null;
-    let myName = null;
-    let myId = null;
-    let roomCode = null;
-    let lastGameState = null;
-    let timerInterval = null;
-    let hasBuzzed = false;
-    let isMyTurnToAnswer = false;
+    let myTeam = null, myName = null, myId = null, roomCode = null;
+    let lastGameState = null, timerInterval = null, hasBuzzed = false;
 
-    document.addEventListener('firebase-ready', () => {
-      initFirebase();
+    document.addEventListener('firebase-ready', async () => {
+      await initFirebase();
       hideReconnecting();
-
       roomCode = getUrlParam('room');
       myTeam = getUrlParam('team');
       const nameParam = getUrlParam('name');
-
-      if (nameParam) {
-        document.getElementById('player-name-input').value = decodeURIComponent(nameParam);
-      } else {
-        const saved = loadFromStorage('playerName');
-        if (saved) document.getElementById('player-name-input').value = saved;
-      }
-
+      if (nameParam) document.getElementById('player-name-input').value = decodeURIComponent(nameParam);
+      else { const saved = loadFromStorage('playerName'); if (saved) document.getElementById('player-name-input').value = saved; }
       if (roomCode && myTeam) {
-        const savedName = loadFromStorage('playerName') || nameParam;
-        if (savedName) {
-          myName = savedName;
-          myId = getOrCreatePlayerId();
-          enterGame();
-        } else {
-          document.getElementById('join-screen').classList.remove('hidden');
-        }
-      } else {
-        document.getElementById('join-screen').classList.remove('hidden');
-      }
+        myName = loadFromStorage('playerName') || nameParam;
+        if (myName) { myId = getOrCreatePlayerId(); await enterGame(); }
+        else document.getElementById('join-screen').classList.remove('hidden');
+      } else document.getElementById('join-screen').classList.remove('hidden');
     });
 
     async function confirmJoin() {
       myName = document.getElementById('player-name-input').value.trim();
       if (!myName) { showToast('أدخل اسمك', 'error'); return; }
-      if (!roomCode || !myTeam) { showToast('رابط غير صحيح', 'error'); return; }
-
       saveToStorage('playerName', myName);
       myId = getOrCreatePlayerId();
       await enterGame();
     }
 
     async function enterGame() {
-      try {
-        const roomData = await joinRoom(roomCode);
-        if (!roomData) { showToast('الغرفة غير موجودة', 'error'); return; }
-
-        await addPlayerToRoom(roomCode, myTeam, myName, myId);
-
-        document.getElementById('join-screen').classList.add('hidden');
-        document.getElementById('game-screen').classList.remove('hidden');
-
-        // Team banner
-        const banner = document.getElementById('team-banner');
-        banner.className = `team-banner ${myTeam}`;
-        banner.innerHTML = `<span>${myTeam === 'red' ? '🔴 الفريق الأحمر' : '🔵 الفريق الأزرق'}</span><span style="font-size:0.9rem; font-weight: 400;">مرحباً ${escapeHtml(myName)}!</span>`;
-
-        document.getElementById('room-info-display').textContent = `الغرفة: ${roomCode}`;
-
-        // Subscribe
-        subscribeToRoom(roomCode, handleGameState);
-
-        showToast(`انضممت للفريق ${myTeam === 'red' ? 'الأحمر' : 'الأزرق'}!`, 'success');
-      } catch(e) {
-        showToast('خطأ في الاتصال', 'error');
-        console.error(e);
-      }
+      const roomData = await joinRoom(roomCode);
+      if (!roomData) { showToast('الغرفة غير موجودة', 'error'); return; }
+      await addPlayerToRoom(roomCode, myTeam, myName, myId);
+      document.getElementById('join-screen').classList.add('hidden');
+      document.getElementById('game-screen').classList.remove('hidden');
+      const banner = document.getElementById('team-banner');
+      banner.className = `team-banner ${myTeam}`;
+      banner.innerHTML = `<span>${myTeam === 'red' ? '🔴 الفريق الأحمر' : '🔵 الفريق الأزرق'}</span><span>مرحباً ${myName}</span>`;
+      document.getElementById('room-info-display').textContent = `الغرفة: ${roomCode}`;
+      subscribeToRoom(roomCode, handleGameState);
+      showToast(`انضممت للفريق ${myTeam === 'red' ? 'الأحمر' : 'الأزرق'}`, 'success');
     }
 
     function handleGameState(state) {
       if (!state) return;
       lastGameState = state;
-
-      // Update scores
       document.getElementById('p-score-red').textContent = state.teams?.red?.score || 0;
       document.getElementById('p-score-blue').textContent = state.teams?.blue?.score || 0;
-
-      // Update letter grid
       renderLetterGrid('player-letters-grid', state.letters, state.currentQuestion?.firstLetter);
-
       const round = state.currentRound || {};
       const question = state.currentQuestion;
-
-      if (state.status === 'ended') {
-        showGameEnded(state);
-        return;
-      }
-
-      // Show/hide question
+      if (state.status === 'ended') return showGameEnded(state);
       if (question && round.phase !== 'idle') {
         document.getElementById('p-question-area').classList.remove('hidden');
         document.getElementById('p-question-text').textContent = question.question;
         document.getElementById('p-question-category').textContent = question.category || '';
         document.getElementById('p-target-letter').textContent = question.firstLetter;
         document.getElementById('p-target-letter-badge').classList.remove('hidden');
-      } else {
-        document.getElementById('p-question-area').classList.add('hidden');
-      }
-
-      updatePhaseUI(round, question);
+      } else document.getElementById('p-question-area').classList.add('hidden');
+      updatePhaseUI(round);
     }
 
-    function updatePhaseUI(round, question) {
+    function updatePhaseUI(round) {
       const phase = round.phase || 'idle';
-      const activeTeam = round.activeTeam;
-      const isMyTeamActive = activeTeam === myTeam;
-      const hasSomeoneBuzzed = round.buzzedPlayer !== null && round.buzzedPlayer !== undefined;
-      const buzzedByMe = round.buzzedPlayer === myName && round.buzzedTeam === myTeam;
-
-      // Phase bar
+      const isMyTeamActive = round.activeTeam === myTeam;
+      const buzzedByMe = round.buzzedPlayer === myName;
       const phaseBar = document.getElementById('p-phase-bar');
+      const timerSection = document.getElementById('p-timer-section');
       phaseBar.className = 'phase-bar mb-2';
-
-      // Reset sections
       document.getElementById('p-buzz-section').classList.add('hidden');
       document.getElementById('p-answer-section').classList.add('hidden');
       document.getElementById('p-other-buzzed').classList.add('hidden');
       document.getElementById('p-waiting-msg').classList.remove('hidden');
-      const timerSection = document.getElementById('p-timer-section');
-
-      if (phase === 'idle' || (!round.timerActive && !hasSomeoneBuzzed)) {
+      timerSection.style.display = 'none';
+      if (phase === 'idle') {
         phaseBar.classList.add('phase-idle');
         phaseBar.textContent = 'انتظر الحكم...';
-        if (timerSection) timerSection.style.display = 'none';
-        stopTimer();
+        hasBuzzed = false;
       } else if (phase === 'active' && round.timerActive) {
         document.getElementById('p-waiting-msg').classList.add('hidden');
         phaseBar.classList.add('phase-active');
-        const teamName = activeTeam === 'red' ? 'الفريق الأحمر' : 'الفريق الأزرق';
-        phaseBar.textContent = isMyTeamActive ? '⚡ دورك! اضغط الزر!' : `⏳ ${teamName} يجيب الآن`;
-
-        if (timerSection) {
-          timerSection.style.display = 'flex';
-          startClientTimer(round.timerEnd);
-        }
-        document.getElementById('p-active-team-label').textContent = `يجيب: ${teamName}`;
-
-        if (isMyTeamActive && !hasSomeoneBuzzed && !hasBuzzed) {
+        phaseBar.textContent = isMyTeamActive ? '⚡ دورك! اضغط الزر!' : `⏳ ${round.activeTeam === 'red' ? 'الأحمر' : 'الأزرق'} يجيب`;
+        timerSection.style.display = 'flex';
+        startClientTimer(round.timerEnd);
+        if (isMyTeamActive && !round.buzzedPlayer && !hasBuzzed) {
           document.getElementById('p-buzz-section').classList.remove('hidden');
-          const buzzBtn = document.getElementById('buzz-btn');
-          buzzBtn.className = `buzz-btn ${myTeam === 'red' ? 'red-buzz' : 'blue-buzz'}`;
-          buzzBtn.disabled = false;
+          document.getElementById('buzz-btn').disabled = false;
         }
       } else if (phase === 'buzzed' || phase === 'answered') {
         document.getElementById('p-waiting-msg').classList.add('hidden');
         phaseBar.classList.add('phase-buzzed');
-
         if (buzzedByMe) {
-          isMyTurnToAnswer = true;
           phaseBar.textContent = '🎤 أنت تجيب الآن!';
-          if (phase === 'buzzed') {
-            document.getElementById('p-answer-section').classList.remove('hidden');
-            document.getElementById('p-answer-input').focus();
-          } else {
-            phaseBar.textContent = '✅ تم إرسال إجابتك - انتظر الحكم';
-          }
+          if (phase === 'buzzed') document.getElementById('p-answer-section').classList.remove('hidden');
+          else phaseBar.textContent = '✅ تم إرسال إجابتك';
         } else {
-          isMyTurnToAnswer = false;
           phaseBar.textContent = round.buzzedPlayer ? `🎤 ${round.buzzedPlayer} يجيب...` : 'لاعب يجيب...';
           document.getElementById('p-other-buzzed').classList.remove('hidden');
-          document.getElementById('p-other-buzzed-text').textContent =
-            `${round.buzzedPlayer || 'لاعب'} (${round.buzzedTeam === 'red' ? 'الأحمر' : 'الأزرق'}) يجيب...`;
+          document.getElementById('p-other-buzzed-text').textContent = `${round.buzzedPlayer || 'لاعب'} يجيب...`;
         }
-        if (timerSection) timerSection.style.display = 'none';
+        timerSection.style.display = 'none';
         stopTimer();
       }
-
-      if (phase === 'idle') hasBuzzed = false;
     }
 
     async function buzz() {
       if (hasBuzzed) return;
       const round = lastGameState?.currentRound;
-      if (!round || round.activeTeam !== myTeam || !round.timerActive) return;
-      if (round.buzzedPlayer) return;
-
+      if (!round || round.activeTeam !== myTeam || !round.timerActive || round.buzzedPlayer) return;
       hasBuzzed = true;
       playBuzz();
       document.getElementById('buzz-btn').disabled = true;
-      try {
-        await buzzIn(roomCode, myName, myTeam);
-        showToast('ضغطت! اكتب إجابتك!', 'success');
-      } catch(e) {
-        hasBuzzed = false;
-        document.getElementById('buzz-btn').disabled = false;
-        showToast('خطأ في الإرسال', 'error');
-      }
+      try { await buzzIn(roomCode, myName, myTeam); showToast('ضغطت! اكتب إجابتك!', 'success'); }
+      catch(e) { hasBuzzed = false; document.getElementById('buzz-btn').disabled = false; }
     }
 
     async function submitPlayerAnswer() {
       const answer = document.getElementById('p-answer-input').value.trim();
-      if (!answer) { showToast('اكتب الإجابة أولاً', 'error'); return; }
-      try {
-        await submitAnswer(roomCode, answer);
-        document.getElementById('p-answer-section').classList.add('hidden');
-        showToast('تم إرسال إجابتك!', 'success');
-      } catch(e) {
-        showToast('خطأ في الإرسال', 'error');
-      }
+      if (!answer) { showToast('اكتب الإجابة', 'error'); return; }
+      try { await submitAnswer(roomCode, answer); document.getElementById('p-answer-section').classList.add('hidden'); }
+      catch(e) { showToast('خطأ في الإرسال', 'error'); }
     }
 
     function startClientTimer(timerEnd) {
@@ -354,71 +267,34 @@
       timerInterval = setInterval(() => {
         const remaining = getTimeRemaining(timerEnd);
         updateTimerDisplay(remaining);
-        if (remaining <= 3 && remaining > 0) playTick();
         if (remaining <= 0) stopTimer();
       }, 500);
       updateTimerDisplay(getTimeRemaining(timerEnd));
     }
-
-    function stopTimer() {
-      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-    }
-
+    function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
     function updateTimerDisplay(seconds) {
-      const timerText = document.getElementById('p-timer-text');
+      document.getElementById('p-timer-text').textContent = seconds;
       const progress = document.getElementById('p-timer-progress');
-      if (timerText) timerText.textContent = seconds;
-      if (progress) {
-        const circumference = 314;
-        const fraction = seconds / 10;
-        progress.style.strokeDashoffset = circumference * (1 - fraction);
-        progress.className = 'timer-progress' + (seconds <= 3 ? ' urgent' : seconds <= 6 ? ' warning' : '');
-      }
+      const circumference = 314;
+      const fraction = seconds / 10;
+      progress.style.strokeDashoffset = circumference * (1 - fraction);
+      progress.style.stroke = seconds <= 3 ? 'var(--red)' : seconds <= 6 ? 'var(--orange)' : 'var(--green)';
     }
-
     function showGameEnded(state) {
       document.getElementById('p-waiting-msg').classList.add('hidden');
       document.getElementById('p-game-ended').classList.remove('hidden');
-      document.getElementById('p-buzz-section').classList.add('hidden');
-      document.getElementById('p-answer-section').classList.add('hidden');
-      document.getElementById('p-phase-bar').textContent = '🏆 انتهت اللعبة!';
-
-      const redScore = state.teams?.red?.score || 0;
-      const blueScore = state.teams?.blue?.score || 0;
+      const redScore = state.teams?.red?.score || 0, blueScore = state.teams?.blue?.score || 0;
       document.getElementById('final-score-red').textContent = redScore;
       document.getElementById('final-score-blue').textContent = blueScore;
-
       let winnerText = '';
-      if (redScore > blueScore) {
-        winnerText = '🔴 الفريق الأحمر يفوز! 🎉';
-        if (myTeam === 'red') { playCelebration(); winnerText = '🏆 فريقك فاز! تهانينا! 🎉'; }
-      } else if (blueScore > redScore) {
-        winnerText = '🔵 الفريق الأزرق يفوز! 🎉';
-        if (myTeam === 'blue') { playCelebration(); winnerText = '🏆 فريقك فاز! تهانينا! 🎉'; }
-      } else {
-        winnerText = '🤝 تعادل! لعبة رائعة!';
-      }
+      if (redScore > blueScore) winnerText = myTeam === 'red' ? '🏆 فريقك فاز!' : '🔴 الفريق الأحمر يفوز';
+      else if (blueScore > redScore) winnerText = myTeam === 'blue' ? '🏆 فريقك فاز!' : '🔵 الفريق الأزرق يفوز';
+      else winnerText = '🤝 تعادل';
       document.getElementById('final-winner-text').textContent = winnerText;
       stopTimer();
     }
-
-    // Enter answer on Enter key
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && isMyTurnToAnswer) submitPlayerAnswer();
-    });
-
-    function escapeHtml(str) {
-      return str.replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-      });
-    }
-
-    window.confirmJoin = confirmJoin;
-    window.buzz = buzz;
-    window.submitPlayerAnswer = submitPlayerAnswer;
-  </script>
+    document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !document.getElementById('p-answer-section').classList.contains('hidden')) submitPlayerAnswer(); });
+    window.confirmJoin = confirmJoin; window.buzz = buzz; window.submitPlayerAnswer = submitPlayerAnswer;
+</script>
 </body>
 </html>
