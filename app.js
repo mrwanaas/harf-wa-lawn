@@ -1,17 +1,15 @@
 // ============================================================
-// SHARED GAME LOGIC AND FIREBASE HELPERS
+// SHARED GAME LOGIC AND FIREBASE HELPERS (FIXED)
 // ============================================================
 
-// Initialize Firebase
 let db;
 let currentRoom = null;
-let currentRole = null; // 'red', 'blue', 'judge'
+let currentRole = null;
 let currentPlayerName = null;
 let gameStateListener = null;
 let timerInterval = null;
 let timerEndTime = null;
 
-// Firebase database paths
 const ROOMS_PATH = 'rooms';
 
 function getRoomPath(roomCode) {
@@ -19,49 +17,67 @@ function getRoomPath(roomCode) {
 }
 
 // ============================================================
-// FIREBASE INITIALIZATION
+// FIREBASE INITIALIZATION (FIXED - with retry)
 // ============================================================
 function initFirebase() {
-  try {
-    const { initializeApp } = window.firebaseModules;
-    const { getDatabase, ref, set, get, update, onValue, push, remove, serverTimestamp } = window.firebaseModules;
-    
-    const app = initializeApp(FIREBASE_CONFIG);
-    db = getDatabase(app);
-    window.db = db;
-    window.firebaseRef = ref;
-    window.firebaseSet = set;
-    window.firebaseGet = get;
-    window.firebaseUpdate = update;
-    window.firebaseOnValue = onValue;
-    window.firebasePush = push;
-    window.firebaseRemove = remove;
-    window.firebaseServerTimestamp = serverTimestamp;
-    console.log("Firebase initialized successfully");
-    return true;
-  } catch (e) {
-    console.error('Firebase init error:', e);
-    return false;
-  }
+  return new Promise((resolve, reject) => {
+    try {
+      if (!window.firebaseModules) {
+        console.error("Firebase modules not loaded yet");
+        reject(new Error("Firebase modules missing"));
+        return;
+      }
+      const { initializeApp } = window.firebaseModules;
+      const { getDatabase, ref, set, get, update, onValue, push, remove, serverTimestamp } = window.firebaseModules;
+      
+      const app = initializeApp(FIREBASE_CONFIG);
+      db = getDatabase(app);
+      
+      // Make all functions globally available
+      window.db = db;
+      window.firebaseRef = ref;
+      window.firebaseSet = set;
+      window.firebaseGet = get;
+      window.firebaseUpdate = update;
+      window.firebaseOnValue = onValue;
+      window.firebasePush = push;
+      window.firebaseRemove = remove;
+      window.firebaseServerTimestamp = serverTimestamp;
+      
+      console.log("Firebase initialized successfully");
+      resolve(true);
+    } catch (e) {
+      console.error('Firebase init error:', e);
+      reject(e);
+    }
+  });
 }
 
 // ============================================================
-// ROOM MANAGEMENT
+// ROOM MANAGEMENT (FIXED - ensure players object exists)
 // ============================================================
 function generateRoomCode() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 async function createRoom(roomCode, judgeName) {
+  const { ref, set } = window.firebaseModules;
+  
+  const letters = {};
+  const ARABIC_LETTERS = ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','هـ','و','ي'];
+  ARABIC_LETTERS.forEach(letter => {
+    letters[encodeLetterKey(letter)] = { letter, owner: null };
+  });
+
   const initialState = {
     roomCode,
-    status: 'waiting', // waiting, playing, ended
+    status: 'waiting',
     judge: { name: judgeName, online: true },
     teams: {
       red: { score: 0, players: {} },
       blue: { score: 0, players: {} }
     },
-    letters: {},
+    letters: letters,
     currentQuestion: null,
     currentRound: {
       activeTeam: null,
@@ -70,38 +86,44 @@ async function createRoom(roomCode, judgeName) {
       buzzedPlayer: null,
       buzzedTeam: null,
       playerAnswer: null,
-      phase: 'idle' // idle, active, buzzed, passed, ended
+      phase: 'idle'
     },
     createdAt: Date.now()
   };
 
-  // Initialize all 28 letters
-  const letters = ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','هـ','و','ي'];
-  letters.forEach(letter => {
-    initialState.letters[encodeLetterKey(letter)] = { letter, owner: null };
-  });
-
-  const { ref, set } = window.firebaseModules;
-  await set(ref(db, getRoomPath(roomCode)), initialState);
-  return initialState;
+  try {
+    await set(ref(db, getRoomPath(roomCode)), initialState);
+    console.log("Room created:", roomCode);
+    return initialState;
+  } catch (error) {
+    console.error("Create room error:", error);
+    throw error;
+  }
 }
 
 async function joinRoom(roomCode) {
   const { ref, get } = window.firebaseModules;
-  const snapshot = await get(ref(db, getRoomPath(roomCode)));
-  if (snapshot.exists()) {
-    return snapshot.val();
+  try {
+    const snapshot = await get(ref(db, getRoomPath(roomCode)));
+    if (snapshot.exists()) {
+      return snapshot.val();
+    }
+    return null;
+  } catch (error) {
+    console.error("Join room error:", error);
+    throw error;
   }
-  return null;
 }
 
 async function addPlayerToRoom(roomCode, team, playerName, playerId) {
   const { ref, set } = window.firebaseModules;
-  await set(ref(db, `${getRoomPath(roomCode)}/teams/${team}/players/${playerId}`), {
+  const playerRef = ref(db, `${getRoomPath(roomCode)}/teams/${team}/players/${playerId}`);
+  await set(playerRef, {
     name: playerName,
     online: true,
     joinedAt: Date.now()
   });
+  console.log(`Player ${playerName} added to ${team} team`);
 }
 
 function subscribeToRoom(roomCode, callback) {
@@ -110,7 +132,11 @@ function subscribeToRoom(roomCode, callback) {
   const unsubscribe = onValue(roomRef, (snapshot) => {
     if (snapshot.exists()) {
       callback(snapshot.val());
+    } else {
+      console.warn("Room not found:", roomCode);
     }
+  }, (error) => {
+    console.error("Subscription error:", error);
   });
   return unsubscribe;
 }
@@ -170,7 +196,7 @@ async function submitAnswer(roomCode, answer) {
 }
 
 async function markLetterWon(roomCode, letter, team) {
-  const { ref, set, update } = window.firebaseModules;
+  const { ref, set, update, get } = window.firebaseModules;
   const key = encodeLetterKey(letter);
   await set(ref(db, `${getRoomPath(roomCode)}/letters/${key}`), {
     letter,
@@ -179,7 +205,7 @@ async function markLetterWon(roomCode, letter, team) {
   // Update score
   const state = await getGameState(roomCode);
   if (state) {
-    const score = Object.values(state.letters || {}).filter(l => l.owner === team).length;
+    const score = Object.values(state.letters || {}).filter(l => l && l.owner === team).length;
     await update(ref(db, `${getRoomPath(roomCode)}/teams/${team}`), { score });
   }
 }
@@ -210,7 +236,7 @@ async function endGame(roomCode) {
 }
 
 // ============================================================
-// LETTER KEY ENCODING (Firebase doesn't allow some chars in keys)
+// LETTER KEY ENCODING
 // ============================================================
 function encodeLetterKey(letter) {
   const map = {
@@ -300,7 +326,12 @@ function playWrong() {
 // TOAST NOTIFICATIONS
 // ============================================================
 function showToast(message, type = 'info', duration = 3000) {
-  const container = document.getElementById('toast-container') || createToastContainer();
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    document.body.appendChild(container);
+  }
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
   toast.textContent = message;
@@ -311,13 +342,6 @@ function showToast(message, type = 'info', duration = 3000) {
     toast.classList.remove('visible');
     setTimeout(() => toast.remove(), 300);
   }, duration);
-}
-
-function createToastContainer() {
-  const container = document.createElement('div');
-  container.id = 'toast-container';
-  document.body.appendChild(container);
-  return container;
 }
 
 // ============================================================
