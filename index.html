@@ -147,15 +147,29 @@
   <script>
     let currentRoomCode = null;
     let roomSubscription = null;
+    let firebaseInitialized = false;
 
-    // Wait for Firebase to be ready
+    // Disable create/join buttons until Firebase is ready
+    window.addEventListener('DOMContentLoaded', () => {
+      const createBtn = document.querySelector('#tab-create .btn-primary');
+      const joinBtn = document.querySelector('#tab-join .btn-primary');
+      if (createBtn) createBtn.disabled = true;
+      if (joinBtn) joinBtn.disabled = true;
+    });
+
     window.addEventListener('firebase-ready', async () => {
       console.log("Firebase ready event received");
       try {
         await initFirebase();
         hideReconnecting();
         loadSavedData();
-        console.log("Firebase initialized successfully");
+        firebaseInitialized = true;
+        // Enable buttons
+        const createBtn = document.querySelector('#tab-create .btn-primary');
+        const joinBtn = document.querySelector('#tab-join .btn-primary');
+        if (createBtn) createBtn.disabled = false;
+        if (joinBtn) joinBtn.disabled = false;
+        console.log("Firebase ready, UI enabled");
       } catch (err) {
         console.error("Init failed:", err);
         showToast("فشل الاتصال بقاعدة البيانات. تأكد من إعدادات Firebase", "error");
@@ -181,13 +195,12 @@
     };
 
     window.createRoomFlow = async function() {
+      if (!firebaseInitialized) { showToast("جاري الاتصال بقاعدة البيانات، انتظر لحظة", "warning"); return; }
       const name = document.getElementById('create-name').value.trim();
       if (!name) { showToast('أدخل اسمك أولاً', 'error'); return; }
-
       saveToStorage('playerName', name);
       currentRoomCode = generateRoomCode();
       saveToStorage('lastRoomCode', currentRoomCode);
-
       showToast('جاري إنشاء الغرفة...', 'info');
       try {
         await createRoom(currentRoomCode, name);
@@ -195,20 +208,18 @@
         showToast('تم إنشاء الغرفة! شارك الكود مع أصدقائك', 'success');
       } catch(e) {
         console.error(e);
-        showToast('خطأ في إنشاء الغرفة: ' + e.message, 'error');
+        showToast('خطأ في إنشاء الغرفة: ' + (e.message || e), 'error');
       }
     };
 
     window.joinRoomFlow = async function() {
+      if (!firebaseInitialized) { showToast("جاري الاتصال بقاعدة البيانات، انتظر لحظة", "warning"); return; }
       const name = document.getElementById('join-name').value.trim();
       const code = document.getElementById('join-code').value.trim();
-
       if (!name) { showToast('أدخل اسمك أولاً', 'error'); return; }
       if (!isValidRoomCode(code)) { showToast('الكود يجب أن يكون 6 أرقام', 'error'); return; }
-
       saveToStorage('playerName', name);
       saveToStorage('lastRoomCode', code);
-
       showToast('جاري الانضمام...', 'info');
       try {
         const roomData = await joinRoom(code);
@@ -218,7 +229,7 @@
         showToast('تم الانضمام للغرفة بنجاح!', 'success');
       } catch(e) {
         console.error(e);
-        showToast('خطأ في الانضمام للغرفة: ' + e.message, 'error');
+        showToast('خطأ في الانضمام للغرفة: ' + (e.message || e), 'error');
       }
     };
 
@@ -226,12 +237,10 @@
       document.getElementById('setup-screen').classList.add('hidden');
       document.getElementById('room-screen').classList.remove('hidden');
       document.getElementById('display-room-code').textContent = roomCode;
-
       setTimeout(() => {
         generateQR('red-qr', buildUrl('player.html', { room: roomCode, team: 'red' }), '#e74c3c');
         generateQR('blue-qr', buildUrl('player.html', { room: roomCode, team: 'blue' }), '#3498db');
       }, 100);
-
       if (roomSubscription) roomSubscription();
       roomSubscription = subscribeToRoom(roomCode, updateRoomDisplay);
     }
@@ -242,14 +251,7 @@
       container.innerHTML = '';
       if (typeof QRCode !== 'undefined') {
         try {
-          new QRCode(container, {
-            text: url,
-            width: 100,
-            height: 100,
-            colorDark: color,
-            colorLight: '#ffffff',
-            correctLevel: QRCode.CorrectLevel.M
-          });
+          new QRCode(container, { text: url, width: 100, height: 100, colorDark: color, colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
         } catch(e) {
           container.innerHTML = `<a href="${url}" target="_blank" style="font-size:0.7rem;">رابط اللاعب</a>`;
         }
@@ -277,64 +279,26 @@
         container.innerHTML = '<p style="color: var(--text-muted); font-size: 0.8rem;">لا يوجد لاعبون بعد</p>';
         return;
       }
-      container.innerHTML = list.map(p => `
-        <div class="player-item">
-          <div class="player-dot"></div>
-          <span class="player-name">${escapeHtml(p.name)}</span>
-        </div>
-      `).join('');
+      container.innerHTML = list.map(p => `<div class="player-item"><div class="player-dot"></div><span class="player-name">${escapeHtml(p.name)}</span></div>`).join('');
     }
 
-    function escapeHtml(str) {
-      return str.replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-      });
-    }
+    function escapeHtml(str) { return str.replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m])); }
 
     window.joinAsPlayer = async function(team) {
       const name = loadFromStorage('playerName');
-      if (!name) {
-        showToast('يرجى إدخال اسمك أولاً في التبويب المناسب', 'error');
-        return;
-      }
+      if (!name) { showToast('يرجى إدخال اسمك أولاً في التبويب المناسب', 'error'); return; }
       const playerId = getOrCreatePlayerId();
       try {
         await addPlayerToRoom(currentRoomCode, team, name, playerId);
         const url = buildUrl('player.html', { room: currentRoomCode, team, name: encodeURIComponent(name) });
         window.location.href = url;
-      } catch(e) {
-        console.error(e);
-        showToast('خطأ في الانضمام للفريق: ' + e.message, 'error');
-      }
+      } catch(e) { showToast('خطأ في الانضمام للفريق: ' + e.message, 'error'); }
     };
-
-    window.joinAsJudge = function() {
-      const url = buildUrl('judge.html', { room: currentRoomCode });
-      window.location.href = url;
-    };
-
-    window.copyRoomCode = function() {
-      if (currentRoomCode) {
-        navigator.clipboard.writeText(currentRoomCode).then(() => {
-          showToast('تم نسخ الكود!', 'success');
-        }).catch(() => {
-          showToast('الكود: ' + currentRoomCode, 'info');
-        });
-      }
-    };
-
-    // Handle URL params for direct join
+    window.joinAsJudge = function() { window.location.href = buildUrl('judge.html', { room: currentRoomCode }); };
+    window.copyRoomCode = function() { if (currentRoomCode) navigator.clipboard.writeText(currentRoomCode).then(()=>showToast('تم نسخ الكود!','success')).catch(()=>showToast('الكود: '+currentRoomCode,'info')); };
     window.addEventListener('load', () => {
-      const roomParam = getUrlParam('room');
-      const teamParam = getUrlParam('team');
-      if (roomParam && teamParam) {
-        currentRoomCode = roomParam;
-        document.getElementById('join-code').value = roomParam;
-        switchTab('join');
-      }
+      const roomParam = getUrlParam('room'), teamParam = getUrlParam('team');
+      if (roomParam && teamParam) { currentRoomCode = roomParam; document.getElementById('join-code').value = roomParam; switchTab('join'); }
     });
   </script>
 </body>
