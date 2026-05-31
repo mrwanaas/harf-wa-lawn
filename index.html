@@ -135,8 +135,8 @@
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-    import { getDatabase, ref, set, get, update, onValue, push, remove } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-    window.firebaseModules = { initializeApp, getDatabase, ref, set, get, update, onValue, push, remove };
+    import { getDatabase, ref, set, get, update, onValue, push, remove, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+    window.firebaseModules = { initializeApp, getDatabase, ref, set, get, update, onValue, push, remove, serverTimestamp };
     window.firebaseReady = true;
     document.dispatchEvent(new Event('firebase-ready'));
   </script>
