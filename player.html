@@ -11,9 +11,8 @@
     .buzz-emoji { font-size: 1.4rem; font-weight: 700; }
     .answer-section { width: 100%; }
     .waiting-msg { text-align: center; padding: 40px 20px; color: var(--text-muted); }
-    .waiting-msg .emoji { font-size: 3rem; margin-bottom: 16px; display: block; }
     .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-    .room-info { font-size: 0.8rem; color: var(--text-muted); }
+    .debug-panel { background: #2a2a2a; padding: 8px; margin-top: 16px; border-radius: 8px; font-size: 12px; color: #0f0; font-family: monospace; }
   </style>
 </head>
 <body>
@@ -31,102 +30,72 @@
           <label class="form-label">اسمك</label>
           <input type="text" id="player-name-input" class="form-input" placeholder="أدخل اسمك" maxlength="20">
         </div>
-        <button class="btn btn-primary btn-block" onclick="confirmJoin()" style="margin-top: 8px;">انضم للعبة</button>
+        <button class="btn btn-primary btn-block" onclick="confirmJoin()">انضم للعبة</button>
       </div>
     </div>
 
     <!-- GAME SCREEN -->
     <div id="game-screen" class="hidden">
-      <!-- Team Banner -->
       <div id="team-banner" class="team-banner"></div>
-
-      <!-- Top Bar -->
       <div class="top-bar">
-        <span class="room-info" id="room-info-display">الغرفة: ---</span>
-        <div class="scores-row" style="margin: 0; gap: 8px;">
-          <div class="score-card red" style="padding: 8px 12px;">
-            <span class="score-number" id="p-score-red" style="font-size: 1.5rem;">0</span>
-            <div class="score-label">أحمر</div>
-          </div>
-          <div class="score-card blue" style="padding: 8px 12px;">
-            <span class="score-number" id="p-score-blue" style="font-size: 1.5rem;">0</span>
-            <div class="score-label">أزرق</div>
-          </div>
+        <span id="room-info-display" class="room-info">الغرفة: ---</span>
+        <div class="scores-row" style="margin:0; gap:8px;">
+          <div class="score-card red"><span class="score-number" id="p-score-red">0</span><div class="score-label">أحمر</div></div>
+          <div class="score-card blue"><span class="score-number" id="p-score-blue">0</span><div class="score-label">أزرق</div></div>
         </div>
       </div>
-
-      <!-- Letters Grid -->
       <div id="player-letters-grid" class="letters-grid mb-2"></div>
-
-      <!-- Status Phase -->
       <div id="p-phase-bar" class="phase-bar phase-idle mb-2">انتظر الحكم...</div>
-
-      <!-- Question Area -->
       <div id="p-question-area" class="hidden card mb-2">
         <div class="question-category" id="p-question-category"></div>
         <div class="question-text" id="p-question-text"></div>
-        <div id="p-target-letter-badge" class="hidden" style="text-align: center;">
-          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px;">الحرف المستهدف</p>
-          <div class="first-letter-badge" id="p-target-letter"></div>
+        <div style="text-align:center;"><div class="first-letter-badge" id="p-target-letter"></div></div>
+      </div>
+      <div id="p-timer-section" class="hidden" style="text-align:center; margin-bottom:16px;">
+        <div class="timer-circle">
+          <svg viewBox="0 0 120 120" style="width:100px;height:100px;">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="var(--bg-card2)" stroke-width="8"/>
+            <circle id="p-timer-progress" cx="60" cy="60" r="50" fill="none" stroke="var(--green)" stroke-width="8" stroke-dasharray="314" stroke-dashoffset="0"/>
+          </svg>
+          <div style="position:relative; top:-65px; font-size:1.8rem; font-weight:900;" id="p-timer-text">10</div>
         </div>
       </div>
 
-      <!-- Timer -->
-      <div id="p-timer-section" class="hidden" style="display:none; flex-direction:column; align-items: center; margin-bottom: 16px;">
-        <div class="timer-container">
-          <div class="timer-circle">
-            <svg class="timer-svg" viewBox="0 0 120 120">
-              <circle class="timer-bg" cx="60" cy="60" r="50"/>
-              <circle class="timer-progress" id="p-timer-progress" cx="60" cy="60" r="50"/>
-            </svg>
-            <div class="timer-text" id="p-timer-text">10</div>
-          </div>
-        </div>
-        <div id="p-active-team-label" style="font-size:0.9rem; color: var(--text-muted); margin-top: 8px;"></div>
-      </div>
-
-      <!-- Buzz Section (shows for both teams when active) -->
+      <!-- BUZZ BUTTON - always visible when round active -->
       <div id="p-buzz-section" class="buzz-section hidden">
         <div class="buzz-emoji">⚡ اضغط أسرع ما يمكن!</div>
         <button id="buzz-btn" class="buzz-btn" onclick="buzz()">
-          <span style="font-size: 1.8em;">🔔</span>
+          <span style="font-size:1.8em;">🔔</span>
           <span>زر الإجابة</span>
         </button>
       </div>
 
-      <!-- Answer Section (when player buzzed) -->
       <div id="p-answer-section" class="hidden card answer-section">
-        <p style="font-weight: 700; text-align: center; margin-bottom: 16px; color: var(--gold);">
-          🎤 لقد ضغطت أولاً! اكتب إجابتك:
-        </p>
+        <p style="font-weight:700; text-align:center;">🎤 اكتب إجابتك:</p>
         <div class="answer-input-wrapper">
-          <input type="text" id="p-answer-input" class="form-input" placeholder="اكتب إجابتك هنا..." maxlength="50" dir="rtl">
+          <input type="text" id="p-answer-input" class="form-input" placeholder="الإجابة..." dir="rtl">
           <button class="btn btn-green" onclick="submitPlayerAnswer()">إرسال</button>
         </div>
       </div>
 
-      <!-- Buzzed by other player -->
-      <div id="p-other-buzzed" class="hidden card text-center" style="background: rgba(241,196,15,0.1); border-color: rgba(241,196,15,0.3);">
-        <p style="color: var(--gold); font-size: 1.1rem; font-weight: 700;" id="p-other-buzzed-text">لاعب آخر يجيب...</p>
+      <div id="p-other-buzzed" class="hidden card text-center">
+        <p style="color:var(--gold);" id="p-other-buzzed-text">لاعب آخر يجيب...</p>
       </div>
 
-      <!-- Waiting for question -->
       <div id="p-waiting-msg" class="waiting-msg">
         <span class="emoji">⏳</span>
-        <p>انتظر الحكم ليطرح السؤال...</p>
+        <p>انتظر بدء الجولة...</p>
       </div>
 
-      <!-- Game ended -->
-      <div id="p-game-ended" class="hidden modal" style="position: relative; background: transparent; border: none; padding: 0;">
-        <div class="card text-center">
-          <h2 style="margin-bottom: 16px;">🏆 انتهت اللعبة!</h2>
-          <div class="scores-row" style="justify-content: center;">
-            <div class="score-card red"><span class="score-number" id="final-score-red">0</span><div class="score-label">الفريق الأحمر</div></div>
-            <div class="score-card blue"><span class="score-number" id="final-score-blue">0</span><div class="score-label">الفريق الأزرق</div></div>
-          </div>
-          <div id="final-winner-text" style="font-size: 1.3rem; font-weight: 900; margin-top: 16px;"></div>
+      <div id="p-game-ended" class="hidden modal" style="position:relative; background:transparent;">
+        <div class="card text-center"><h2>🏆 انتهت اللعبة!</h2>
+          <div class="scores-row"><div class="score-card red"><span id="final-score-red">0</span></div><div class="score-card blue"><span id="final-score-blue">0</span></div></div>
+          <div id="final-winner-text"></div>
         </div>
       </div>
+
+      <!-- Debug panel -->
+      <div class="debug-panel" id="debug-panel">🔍 جاهز</div>
     </div>
   </div>
 
@@ -142,8 +111,8 @@
   <script src="questions.js"></script>
 
   <script>
-    let myTeam = null, myName = null, myId = null, roomCode = null;
-    let lastGameState = null, timerInterval = null, hasBuzzed = false;
+    let myTeam, myName, myId, roomCode;
+    let lastState, timerInterval, hasBuzzed = false;
 
     document.addEventListener('firebase-ready', async () => {
       await initFirebase();
@@ -155,37 +124,27 @@
       else { const saved = loadFromStorage('playerName'); if (saved) document.getElementById('player-name-input').value = saved; }
       if (roomCode && myTeam) {
         myName = loadFromStorage('playerName') || nameParam;
-        if (myName) { myId = getOrCreatePlayerId(); await enterGame(); }
+        if (myName) { myId = getOrCreatePlayerId(); enterGame(); }
         else document.getElementById('join-screen').classList.remove('hidden');
       } else document.getElementById('join-screen').classList.remove('hidden');
     });
 
-    async function confirmJoin() {
-      myName = document.getElementById('player-name-input').value.trim();
-      if (!myName) { showToast('أدخل اسمك', 'error'); return; }
-      saveToStorage('playerName', myName);
-      myId = getOrCreatePlayerId();
-      await enterGame();
-    }
-
     async function enterGame() {
       const roomData = await joinRoom(roomCode);
-      if (!roomData) { showToast('الغرفة غير موجودة', 'error'); return; }
+      if (!roomData) { showToast('الغرفة غير موجودة','error'); return; }
       await addPlayerToRoom(roomCode, myTeam, myName, myId);
       document.getElementById('join-screen').classList.add('hidden');
       document.getElementById('game-screen').classList.remove('hidden');
-      const banner = document.getElementById('team-banner');
-      banner.className = `team-banner ${myTeam}`;
-      banner.innerHTML = `<span>${myTeam === 'red' ? '🔴 الفريق الأحمر' : '🔵 الفريق الأزرق'}</span><span>مرحباً ${myName}</span>`;
+      document.getElementById('team-banner').className = `team-banner ${myTeam}`;
+      document.getElementById('team-banner').innerHTML = `<span>${myTeam==='red'?'🔴 الأحمر':'🔵 الأزرق'}</span><span>مرحباً ${myName}</span>`;
       document.getElementById('room-info-display').textContent = `الغرفة: ${roomCode}`;
       subscribeToRoom(roomCode, handleGameState);
-      showToast(`انضممت للفريق ${myTeam === 'red' ? 'الأحمر' : 'الأزرق'}`, 'success');
+      showToast(`انضممت للفريق ${myTeam==='red'?'الأحمر':'الأزرق'}`, 'success');
     }
 
     function handleGameState(state) {
       if (!state) return;
-      console.log("Game state update:", state.currentRound?.phase, state.currentRound?.activeTeam);
-      lastGameState = state;
+      lastState = state;
       document.getElementById('p-score-red').textContent = state.teams?.red?.score || 0;
       document.getElementById('p-score-blue').textContent = state.teams?.blue?.score || 0;
       renderLetterGrid('player-letters-grid', state.letters, state.currentQuestion?.firstLetter);
@@ -197,149 +156,135 @@
         document.getElementById('p-question-text').textContent = question.question;
         document.getElementById('p-question-category').textContent = question.category || '';
         document.getElementById('p-target-letter').textContent = question.firstLetter;
-        document.getElementById('p-target-letter-badge').classList.remove('hidden');
       } else document.getElementById('p-question-area').classList.add('hidden');
       updatePhaseUI(round);
     }
 
     function updatePhaseUI(round) {
-      const phase = round.phase || 'idle';
-      // Both teams can buzz when phase is 'active' AND timerActive is true AND (activeTeam is null OR activeTeam === myTeam)
-      const canBuzz = (phase === 'active' && round.timerActive === true && (round.activeTeam === null || round.activeTeam === myTeam));
-      const buzzedByMe = round.buzzedPlayer === myName;
+      const phase = round.phase;
+      const isActive = (phase === 'active' && round.timerActive === true);
+      const isBuzzedOrAnswered = (phase === 'buzzed' || phase === 'answered');
+      const isWaitingOther = (phase === 'waiting_other');
+      const buzzedByMe = (round.buzzedPlayer === myName);
+      const canBuzz = isActive && !round.buzzedPlayer && !hasBuzzed;
+
+      // Debug log
+      document.getElementById('debug-panel').innerHTML = `phase: ${phase} | timerActive: ${round.timerActive} | activeTeam: ${round.activeTeam} | canBuzz: ${canBuzz} | buzzedPlayer: ${round.buzzedPlayer}`;
+
       const phaseBar = document.getElementById('p-phase-bar');
-      const timerSection = document.getElementById('p-timer-section');
-      const buzzSection = document.getElementById('p-buzz-section');
-      const answerSection = document.getElementById('p-answer-section');
-      const otherBuzzed = document.getElementById('p-other-buzzed');
-      const waitingMsg = document.getElementById('p-waiting-msg');
-      
+      const timerSec = document.getElementById('p-timer-section');
+      const buzzDiv = document.getElementById('p-buzz-section');
+      const answerDiv = document.getElementById('p-answer-section');
+      const otherDiv = document.getElementById('p-other-buzzed');
+      const waitingDiv = document.getElementById('p-waiting-msg');
+
       phaseBar.className = 'phase-bar mb-2';
-      buzzSection.classList.add('hidden');
-      answerSection.classList.add('hidden');
-      otherBuzzed.classList.add('hidden');
-      waitingMsg.classList.remove('hidden');
-      timerSection.style.display = 'none';
-      
+      buzzDiv.classList.add('hidden');
+      answerDiv.classList.add('hidden');
+      otherDiv.classList.add('hidden');
+      waitingDiv.classList.add('hidden');
+      timerSec.style.display = 'none';
+
       if (phase === 'idle') {
         phaseBar.classList.add('phase-idle');
-        phaseBar.textContent = 'انتظر بدء الجولة...';
+        phaseBar.textContent = '⏳ انتظر بدء الجولة';
+        waitingDiv.classList.remove('hidden');
         hasBuzzed = false;
       } 
-      else if (phase === 'active' && round.timerActive) {
-        waitingMsg.classList.add('hidden');
+      else if (isActive) {
         phaseBar.classList.add('phase-active');
-        phaseBar.textContent = canBuzz ? '⚡ اضغط الزر للإجابة!' : '⏳ انتظر دورك...';
-        timerSection.style.display = 'flex';
+        phaseBar.textContent = canBuzz ? '⚡ اضغط الزر!' : '⏳ جاري...';
+        timerSec.style.display = 'block';
         startClientTimer(round.timerEnd);
-        if (canBuzz && !round.buzzedPlayer && !hasBuzzed) {
-          buzzSection.classList.remove('hidden');
+        if (canBuzz) {
+          buzzDiv.classList.remove('hidden');
           document.getElementById('buzz-btn').disabled = false;
-          console.log("Buzz button shown - you can buzz!");
+        } else {
+          waitingDiv.classList.remove('hidden');
+          waitingDiv.querySelector('p').innerText = '⏳ انتظر دورك...';
         }
-      } 
-      else if (phase === 'buzzed' || phase === 'answered') {
-        waitingMsg.classList.add('hidden');
+      }
+      else if (isBuzzedOrAnswered) {
         phaseBar.classList.add('phase-buzzed');
         if (buzzedByMe) {
           phaseBar.textContent = '🎤 أنت تجيب الآن!';
-          if (phase === 'buzzed') answerSection.classList.remove('hidden');
-          else phaseBar.textContent = '✅ تم إرسال إجابتك';
+          if (phase === 'buzzed') answerDiv.classList.remove('hidden');
+          else phaseBar.textContent = '✅ تم الإرسال';
         } else {
           phaseBar.textContent = round.buzzedPlayer ? `🎤 ${round.buzzedPlayer} يجيب...` : 'لاعب يجيب...';
-          otherBuzzed.classList.remove('hidden');
+          otherDiv.classList.remove('hidden');
           document.getElementById('p-other-buzzed-text').textContent = `${round.buzzedPlayer || 'لاعب'} يجيب...`;
         }
-        timerSection.style.display = 'none';
+        timerSec.style.display = 'none';
         stopTimer();
       }
-      else if (phase === 'waiting_other') {
-        waitingMsg.classList.add('hidden');
+      else if (isWaitingOther) {
+        phaseBar.classList.add('phase-idle');
         if (round.activeTeam === myTeam) {
-          phaseBar.textContent = '⏳ دور فريقك للإجابة! اكتب الإجابة فوراً.';
-          answerSection.classList.remove('hidden');
+          phaseBar.textContent = '⏳ دور فريقك! اكتب الإجابة';
+          answerDiv.classList.remove('hidden');
         } else {
-          phaseBar.textContent = `⏳ فريق ${round.activeTeam === 'red' ? 'الأحمر' : 'الأزرق'} يجيب الآن.`;
+          phaseBar.textContent = `⏳ فريق ${round.activeTeam==='red'?'الأحمر':'الأزرق'} يجيب`;
         }
-        timerSection.style.display = 'flex';
+        timerSec.style.display = 'block';
         startClientTimer(round.timerEnd);
       }
     }
 
     async function buzz() {
       if (hasBuzzed) return;
-      const round = lastGameState?.currentRound;
+      const round = lastState?.currentRound;
       if (!round || round.phase !== 'active' || !round.timerActive) {
-        showToast("لا يمكن الضغط الآن", 'error');
+        showToast('لا يمكن الضغط الآن', 'error');
         return;
       }
-      if (round.buzzedPlayer) {
-        showToast("شخص آخر ضغط قبلك!", 'warning');
-        return;
-      }
+      if (round.buzzedPlayer) { showToast('شخص آخر ضغط قبلك!', 'warning'); return; }
       hasBuzzed = true;
       playBuzz();
       document.getElementById('buzz-btn').disabled = true;
       try {
         await buzzIn(roomCode, myName, myTeam);
-        showToast('ضغطت! اكتب إجابتك!', 'success');
-      } catch(e) { 
-        hasBuzzed = false; 
-        document.getElementById('buzz-btn').disabled = false;
-        showToast('خطأ: ' + e.message, 'error');
-      }
+        showToast('ضغطت! اكتب إجابتك', 'success');
+      } catch(e) { hasBuzzed = false; document.getElementById('buzz-btn').disabled = false; }
     }
 
     async function submitPlayerAnswer() {
-      const answer = document.getElementById('p-answer-input').value.trim();
-      if (!answer) { showToast('اكتب الإجابة', 'error'); return; }
-      try {
-        await submitAnswer(roomCode, answer);
-        document.getElementById('p-answer-section').classList.add('hidden');
-        showToast('تم إرسال إجابتك!', 'success');
-      } catch(e) { showToast('خطأ في الإرسال', 'error'); }
+      const ans = document.getElementById('p-answer-input').value.trim();
+      if (!ans) { showToast('اكتب الإجابة', 'error'); return; }
+      await submitAnswer(roomCode, ans);
+      document.getElementById('p-answer-section').classList.add('hidden');
+      showToast('تم الإرسال', 'success');
     }
 
     function startClientTimer(timerEnd) {
       stopTimer();
       timerInterval = setInterval(() => {
-        const remaining = getTimeRemaining(timerEnd);
-        updateTimerDisplay(remaining);
-        if (remaining <= 0) stopTimer();
+        const r = getTimeRemaining(timerEnd);
+        updateTimerDisplay(r);
+        if (r <= 0) stopTimer();
       }, 500);
       updateTimerDisplay(getTimeRemaining(timerEnd));
     }
-    
     function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
-    
-    function updateTimerDisplay(seconds) {
-      const timerText = document.getElementById('p-timer-text');
-      const progress = document.getElementById('p-timer-progress');
-      if (timerText) timerText.textContent = seconds;
-      if (progress) {
-        const circumference = 314;
-        const fraction = seconds / 10;
-        progress.style.strokeDashoffset = circumference * (1 - fraction);
-        progress.className = 'timer-progress' + (seconds <= 3 ? ' urgent' : seconds <= 6 ? ' warning' : '');
-      }
+    function updateTimerDisplay(sec) {
+      document.getElementById('p-timer-text').textContent = sec;
+      const circ = 314, fraction = sec/10;
+      document.getElementById('p-timer-progress').style.strokeDashoffset = circ*(1-fraction);
     }
-    
     function showGameEnded(state) {
       document.getElementById('p-waiting-msg').classList.add('hidden');
       document.getElementById('p-game-ended').classList.remove('hidden');
-      const redScore = state.teams?.red?.score || 0, blueScore = state.teams?.blue?.score || 0;
-      document.getElementById('final-score-red').textContent = redScore;
-      document.getElementById('final-score-blue').textContent = blueScore;
-      let winnerText = '';
-      if (redScore > blueScore) winnerText = myTeam === 'red' ? '🏆 فريقك فاز!' : '🔴 الفريق الأحمر يفوز';
-      else if (blueScore > redScore) winnerText = myTeam === 'blue' ? '🏆 فريقك فاز!' : '🔵 الفريق الأزرق يفوز';
-      else winnerText = '🤝 تعادل';
-      document.getElementById('final-winner-text').textContent = winnerText;
+      const rs = state.teams?.red?.score||0, bs = state.teams?.blue?.score||0;
+      document.getElementById('final-score-red').textContent = rs;
+      document.getElementById('final-score-blue').textContent = bs;
+      let txt = rs>bs ? (myTeam==='red'?'🏆 فزت!':'🔴 الأحمر يفوز') : bs>rs ? (myTeam==='blue'?'🏆 فزت!':'🔵 الأزرق يفوز') : '🤝 تعادل';
+      document.getElementById('final-winner-text').textContent = txt;
       stopTimer();
     }
-    
-    document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !document.getElementById('p-answer-section').classList.contains('hidden')) submitPlayerAnswer(); });
-    window.confirmJoin = confirmJoin; window.buzz = buzz; window.submitPlayerAnswer = submitPlayerAnswer;
+    document.addEventListener('keydown', e => { if(e.key==='Enter' && !document.getElementById('p-answer-section').classList.contains('hidden')) submitPlayerAnswer(); });
+    window.confirmJoin = confirmJoin;
+    window.buzz = buzz;
+    window.submitPlayerAnswer = submitPlayerAnswer;
   </script>
 </body>
 </html>
