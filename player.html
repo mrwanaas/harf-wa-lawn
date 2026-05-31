@@ -203,7 +203,7 @@
 
     function updatePhaseUI(round) {
       const phase = round.phase || 'idle';
-      const isMyTeamActive = round.activeTeam === myTeam;
+      const canBuzz = (phase === 'active' && round.timerActive && (round.activeTeam === null || round.activeTeam === myTeam));
       const buzzedByMe = round.buzzedPlayer === myName;
       const phaseBar = document.getElementById('p-phase-bar');
       const timerSection = document.getElementById('p-timer-section');
@@ -215,15 +215,15 @@
       timerSection.style.display = 'none';
       if (phase === 'idle') {
         phaseBar.classList.add('phase-idle');
-        phaseBar.textContent = 'انتظر الحكم...';
+        phaseBar.textContent = 'انتظر بدء الجولة...';
         hasBuzzed = false;
       } else if (phase === 'active' && round.timerActive) {
         document.getElementById('p-waiting-msg').classList.add('hidden');
         phaseBar.classList.add('phase-active');
-        phaseBar.textContent = isMyTeamActive ? '⚡ دورك! اضغط الزر!' : `⏳ ${round.activeTeam === 'red' ? 'الأحمر' : 'الأزرق'} يجيب`;
+        phaseBar.textContent = canBuzz ? '⚡ اضغط الزر للإجابة!' : '⏳ انتظر دورك...';
         timerSection.style.display = 'flex';
         startClientTimer(round.timerEnd);
-        if (isMyTeamActive && !round.buzzedPlayer && !hasBuzzed) {
+        if (canBuzz && !round.buzzedPlayer && !hasBuzzed) {
           document.getElementById('p-buzz-section').classList.remove('hidden');
           document.getElementById('buzz-btn').disabled = false;
         }
@@ -241,25 +241,40 @@
         }
         timerSection.style.display = 'none';
         stopTimer();
+      } else if (phase === 'waiting_other') {
+        // Only the other team gets to answer directly (no buzz)
+        if (round.activeTeam === myTeam) {
+          phaseBar.textContent = '⏳ دور فريقك للإجابة! اكتب الإجابة فوراً.';
+          document.getElementById('p-answer-section').classList.remove('hidden');
+        } else {
+          phaseBar.textContent = `⏳ فريق ${round.activeTeam === 'red' ? 'الأحمر' : 'الأزرق'} يجيب الآن.`;
+        }
+        timerSection.style.display = 'flex';
+        startClientTimer(round.timerEnd);
       }
     }
 
     async function buzz() {
       if (hasBuzzed) return;
       const round = lastGameState?.currentRound;
-      if (!round || round.activeTeam !== myTeam || !round.timerActive || round.buzzedPlayer) return;
+      if (!round || round.phase !== 'active' || !round.timerActive) return;
+      if (round.buzzedPlayer) return;
       hasBuzzed = true;
       playBuzz();
       document.getElementById('buzz-btn').disabled = true;
-      try { await buzzIn(roomCode, myName, myTeam); showToast('ضغطت! اكتب إجابتك!', 'success'); }
-      catch(e) { hasBuzzed = false; document.getElementById('buzz-btn').disabled = false; }
+      try {
+        await buzzIn(roomCode, myName, myTeam);
+        showToast('ضغطت! اكتب إجابتك!', 'success');
+      } catch(e) { hasBuzzed = false; document.getElementById('buzz-btn').disabled = false; }
     }
 
     async function submitPlayerAnswer() {
       const answer = document.getElementById('p-answer-input').value.trim();
       if (!answer) { showToast('اكتب الإجابة', 'error'); return; }
-      try { await submitAnswer(roomCode, answer); document.getElementById('p-answer-section').classList.add('hidden'); }
-      catch(e) { showToast('خطأ في الإرسال', 'error'); }
+      try {
+        await submitAnswer(roomCode, answer);
+        document.getElementById('p-answer-section').classList.add('hidden');
+      } catch(e) { showToast('خطأ في الإرسال', 'error'); }
     }
 
     function startClientTimer(timerEnd) {
@@ -295,6 +310,6 @@
     }
     document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !document.getElementById('p-answer-section').classList.contains('hidden')) submitPlayerAnswer(); });
     window.confirmJoin = confirmJoin; window.buzz = buzz; window.submitPlayerAnswer = submitPlayerAnswer;
-</script>
+  </script>
 </body>
 </html>
