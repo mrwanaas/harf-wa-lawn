@@ -241,7 +241,6 @@
     let currentQuestion = null;
     let timerInterval = null;
     let qManager = null;
-    let wonLetters = [];
     let history = [];
     let selectedCategory = 'all';
     let currentActiveTeam = null;
@@ -265,6 +264,7 @@
     function buildCategoryPills() {
       const cats = qManager.getCategories();
       const container = document.getElementById('category-pills');
+      container.innerHTML = '<button class="pill active" data-cat="all" onclick="setCategory(this, \'all\')">الكل</button>';
       cats.forEach(cat => {
         const btn = document.createElement('button');
         btn.className = 'pill';
@@ -282,6 +282,7 @@
     }
 
     function handleState(state) {
+      if (!state) return;
       lastState = state;
 
       // Scores
@@ -292,7 +293,6 @@
 
       // Letters
       const letters = state.letters || {};
-      wonLetters = Object.values(letters).filter(l => l.owner).map(l => l.firstLetter || l.letter);
       renderJudgeLetterGrid(letters);
       updateProgress(letters);
 
@@ -309,6 +309,7 @@
     function renderJudgeLetterGrid(letters) {
       const LETTERS = ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','هـ','و','ي'];
       const grid = document.getElementById('judge-letters-grid');
+      if (!grid) return;
       grid.innerHTML = '';
       LETTERS.forEach(letter => {
         const key = encodeLetterKey(letter);
@@ -343,10 +344,11 @@
     function renderJudgePlayers(teams) {
       const renderList = (containerId, players) => {
         const container = document.getElementById(containerId);
+        if (!container) return;
         const list = Object.values(players || {});
         container.innerHTML = list.length === 0
           ? '<p style="color: var(--text-muted); font-size: 0.75rem;">لا يوجد لاعبون</p>'
-          : list.map(p => `<div class="mini-player">${p.name}</div>`).join('');
+          : list.map(p => `<div class="mini-player">${escapeHtml(p.name)}</div>`).join('');
       };
       renderList('j-red-players', teams?.red?.players);
       renderList('j-blue-players', teams?.blue?.players);
@@ -361,9 +363,9 @@
       const startBtn = document.getElementById('start-timer-btn');
       const passBtn = document.getElementById('pass-btn');
 
-      phaseBar.className = 'phase-bar';
-      buzzAlert.classList.add('hidden');
-      timerSec.style.display = 'none';
+      if (phaseBar) phaseBar.className = 'phase-bar';
+      if (buzzAlert) buzzAlert.classList.add('hidden');
+      if (timerSec) timerSec.style.display = 'none';
 
       if (question) {
         document.getElementById('j-question-display').classList.remove('hidden');
@@ -372,34 +374,32 @@
         document.getElementById('j-q-text').textContent = question.question;
         document.getElementById('j-q-answer').textContent = question.answer;
         document.getElementById('j-q-letter').textContent = question.firstLetter;
+      } else {
+        document.getElementById('j-question-display').classList.add('hidden');
+        document.getElementById('j-no-question').classList.remove('hidden');
       }
 
       switch(phase) {
         case 'idle':
-          phaseBar.classList.add('phase-idle');
-          phaseBar.textContent = '⏳ اختر فريق وابدأ المؤقت';
-          startBtn.disabled = !selectedTeam || !question;
-          passBtn.disabled = true;
+          if (phaseBar) { phaseBar.classList.add('phase-idle'); phaseBar.textContent = '⏳ اختر فريق وابدأ المؤقت'; }
+          if (startBtn) startBtn.disabled = !selectedTeam || !question;
+          if (passBtn) passBtn.disabled = true;
           stopTimer();
           break;
 
         case 'active':
-          phaseBar.classList.add('phase-active');
-          const teamLabel = round.activeTeam === 'red' ? '🔴 الفريق الأحمر' : '🔵 الفريق الأزرق';
-          phaseBar.textContent = `⚡ ${teamLabel} يجيب الآن!`;
-          timerSec.style.display = 'flex';
+          if (phaseBar) { phaseBar.classList.add('phase-active'); phaseBar.textContent = `⚡ ${round.activeTeam === 'red' ? '🔴 الفريق الأحمر' : '🔵 الفريق الأزرق'} يجيب الآن!`; }
+          if (timerSec) timerSec.style.display = 'flex';
           currentActiveTeam = round.activeTeam;
-          startBtn.disabled = true;
-          passBtn.disabled = false;
+          if (startBtn) startBtn.disabled = true;
+          if (passBtn) passBtn.disabled = false;
           startJudgeTimer(round.timerEnd);
           break;
 
         case 'buzzed':
-          phaseBar.classList.add('phase-buzzed');
-          phaseBar.textContent = `🎤 ${round.buzzedPlayer || 'لاعب'} ضغط زر الإجابة!`;
-          buzzAlert.classList.remove('hidden');
-          document.getElementById('j-buzzed-player').textContent =
-            `${round.buzzedPlayer} (${round.buzzedTeam === 'red' ? '🔴 الأحمر' : '🔵 الأزرق'})`;
+          if (phaseBar) { phaseBar.classList.add('phase-buzzed'); phaseBar.textContent = `🎤 ${round.buzzedPlayer || 'لاعب'} ضغط زر الإجابة!`; }
+          if (buzzAlert) buzzAlert.classList.remove('hidden');
+          document.getElementById('j-buzzed-player').textContent = `${round.buzzedPlayer} (${round.buzzedTeam === 'red' ? '🔴 الأحمر' : '🔵 الأزرق'})`;
           document.getElementById('j-player-answer').style.display = 'none';
           document.getElementById('j-judge-buttons').style.display = 'none';
           playBuzz();
@@ -407,11 +407,9 @@
           break;
 
         case 'answered':
-          phaseBar.classList.add('phase-answered');
-          phaseBar.textContent = '📝 الإجابة وصلت - احكم عليها!';
-          buzzAlert.classList.remove('hidden');
-          document.getElementById('j-buzzed-player').textContent =
-            `${round.buzzedPlayer} (${round.buzzedTeam === 'red' ? '🔴 الأحمر' : '🔵 الأزرق'})`;
+          if (phaseBar) { phaseBar.classList.add('phase-answered'); phaseBar.textContent = '📝 الإجابة وصلت - احكم عليها!'; }
+          if (buzzAlert) buzzAlert.classList.remove('hidden');
+          document.getElementById('j-buzzed-player').textContent = `${round.buzzedPlayer} (${round.buzzedTeam === 'red' ? '🔴 الأحمر' : '🔵 الأزرق'})`;
           document.getElementById('j-player-answer').style.display = 'block';
           document.getElementById('j-answer-text').textContent = round.playerAnswer || '';
           document.getElementById('j-judge-buttons').style.display = 'flex';
@@ -424,7 +422,8 @@
       selectedTeam = team;
       document.getElementById('sel-red').className = `team-select-btn${team === 'red' ? ' active-red' : ''}`;
       document.getElementById('sel-blue').className = `team-select-btn${team === 'blue' ? ' active-blue' : ''}`;
-      document.getElementById('start-timer-btn').disabled = !currentQuestion;
+      const startBtn = document.getElementById('start-timer-btn');
+      if (startBtn) startBtn.disabled = !currentQuestion;
     }
 
     async function generateQuestion() {
@@ -447,10 +446,11 @@
         document.getElementById('j-q-answer').textContent = q.answer;
         document.getElementById('j-q-letter').textContent = q.firstLetter;
         document.getElementById('start-timer-btn').disabled = !selectedTeam;
-        document.getElementById('j-phase-bar').textContent = `📋 السؤال جاهز - الإجابة تبدأ بـ "${q.firstLetter}"`;
+        if (document.getElementById('j-phase-bar')) document.getElementById('j-phase-bar').textContent = `📋 السؤال جاهز - الإجابة تبدأ بـ "${q.firstLetter}"`;
         showToast(`سؤال جديد: الإجابة تبدأ بـ "${q.firstLetter}"`, 'info');
       } catch(e) {
         showToast('خطأ في تحميل السؤال', 'error');
+        console.error(e);
       }
     }
 
@@ -465,6 +465,7 @@
         showToast(`بدأ المؤقت للفريق ${selectedTeam === 'red' ? 'الأحمر' : 'الأزرق'}!`, 'info');
       } catch(e) {
         showToast('خطأ في بدء المؤقت', 'error');
+        console.error(e);
       }
     }
 
@@ -486,10 +487,15 @@
     }
 
     function updateJudgeTimer(seconds) {
-      document.getElementById('j-timer-text').textContent = seconds;
-      const p = document.getElementById('j-timer-progress');
-      p.style.strokeDashoffset = 314 * (1 - seconds / 10);
-      p.className = 'timer-progress' + (seconds <= 3 ? ' urgent' : seconds <= 6 ? ' warning' : '');
+      const timerText = document.getElementById('j-timer-text');
+      const progress = document.getElementById('j-timer-progress');
+      if (timerText) timerText.textContent = seconds;
+      if (progress) {
+        const circumference = 314;
+        const fraction = seconds / 10;
+        progress.style.strokeDashoffset = circumference * (1 - fraction);
+        progress.className = 'timer-progress' + (seconds <= 3 ? ' urgent' : seconds <= 6 ? ' warning' : '');
+      }
     }
 
     async function judgeCorrect() {
@@ -518,14 +524,13 @@
         }
       } catch(e) {
         showToast('خطأ', 'error');
+        console.error(e);
       }
     }
 
     async function judgeWrong() {
-      const round = lastState?.currentRound;
       playWrong();
       showToast('❌ إجابة خاطئة!', 'error');
-      // Pass to other team automatically
       await passToOther();
     }
 
@@ -558,32 +563,22 @@
     }
 
     function manualAssignLetter(letter, currentOwner) {
-      const options = currentOwner
-        ? [`إلغاء ملكية "${letter}"`, `تعيين للأحمر`, `تعيين للأزرق`, `إلغاء`]
-        : [`تعيين "${letter}" للأحمر`, `تعيين "${letter}" للأزرق`, `إلغاء`];
-
-      const msg = currentOwner
-        ? `الحرف "${letter}" مملوك للفريق ${currentOwner === 'red' ? 'الأحمر' : 'الأزرق'}. ماذا تريد؟`
-        : `تعيين الحرف "${letter}" يدوياً:`;
-
-      // Simple confirm flow
-      if (!currentOwner) {
-        if (confirm(`تعيين "${letter}" للفريق الأحمر؟\n(اضغط إلغاء للأزرق)`)) {
-          markLetterWon(roomCode, letter, 'red').then(() => showToast(`تم تعيين "${letter}" للأحمر`, 'success'));
-        } else if (confirm(`تعيين "${letter}" للفريق الأزرق؟`)) {
-          markLetterWon(roomCode, letter, 'blue').then(() => showToast(`تم تعيين "${letter}" للأزرق`, 'success'));
-        }
+      if (confirm(`تعيين "${letter}" للفريق الأحمر؟`)) {
+        markLetterWon(roomCode, letter, 'red').then(() => showToast(`تم تعيين "${letter}" للأحمر`, 'success'));
+      } else if (confirm(`تعيين "${letter}" للفريق الأزرق؟`)) {
+        markLetterWon(roomCode, letter, 'blue').then(() => showToast(`تم تعيين "${letter}" للأزرق`, 'success'));
       }
     }
 
     function addHistory(letter, team, answer) {
       history.unshift({ letter, team, answer });
       const container = document.getElementById('j-history-list');
+      if (!container) return;
       container.innerHTML = history.slice(0, 10).map(h => `
         <div class="history-item">
           <div class="letter-won-chip ${h.team}">${h.letter}</div>
           <div>
-            <div style="font-weight:700; font-size: 0.85rem;">${h.answer}</div>
+            <div style="font-weight:700; font-size: 0.85rem;">${escapeHtml(h.answer)}</div>
             <div style="color: var(--text-muted); font-size: 0.75rem;">${h.team === 'red' ? 'الفريق الأحمر' : 'الفريق الأزرق'}</div>
           </div>
         </div>
@@ -612,6 +607,26 @@
       document.getElementById('winner-modal').classList.remove('hidden');
       playCelebration();
     }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+      });
+    }
+
+    // Make functions global for onclick
+    window.selectTeam = selectTeam;
+    window.generateQuestion = generateQuestion;
+    window.startRound = startRound;
+    window.judgeCorrect = judgeCorrect;
+    window.judgeWrong = judgeWrong;
+    window.passToOther = passToOther;
+    window.skipQuestion = skipQuestion;
+    window.confirmEndGame = confirmEndGame;
+    window.setCategory = setCategory;
   </script>
 </body>
 </html>
