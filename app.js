@@ -138,8 +138,13 @@ async function startTimer(roomCode, team, durationSeconds = 10) {
   const { ref, set } = window.firebaseModules;
   const timerEnd = Date.now() + durationSeconds * 1000;
   await set(ref(db, `rooms/${roomCode}/currentRound`), {
-    activeTeam: team, timerEnd, timerActive: true,
-    buzzedPlayer: null, buzzedTeam: null, playerAnswer: null, phase: 'active'
+    activeTeam: team, // can be null -> both teams can buzz
+    timerEnd,
+    timerActive: true,
+    buzzedPlayer: null,
+    buzzedTeam: null,
+    playerAnswer: null,
+    phase: 'active'
   });
 }
 
