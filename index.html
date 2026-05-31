@@ -218,9 +218,11 @@
       document.getElementById('room-screen').classList.remove('hidden');
       document.getElementById('display-room-code').textContent = roomCode;
 
-      // Generate QR codes
-      generateQR('red-qr', buildUrl('player.html', { room: roomCode, team: 'red' }), '#e74c3c');
-      generateQR('blue-qr', buildUrl('player.html', { room: roomCode, team: 'blue' }), '#3498db');
+      // Generate QR codes after DOM is fully shown
+      setTimeout(() => {
+        generateQR('red-qr', buildUrl('player.html', { room: roomCode, team: 'red' }), '#e74c3c');
+        generateQR('blue-qr', buildUrl('player.html', { room: roomCode, team: 'blue' }), '#3498db');
+      }, 100);
 
       // Subscribe to room updates
       roomSubscription = subscribeToRoom(roomCode, updateRoomDisplay);
@@ -228,6 +230,7 @@
 
     function generateQR(containerId, url, color) {
       const container = document.getElementById(containerId);
+      if (!container) return;
       container.innerHTML = '';
       try {
         new QRCode(container, {
@@ -267,13 +270,26 @@
       container.innerHTML = list.map(p => `
         <div class="player-item">
           <div class="player-dot"></div>
-          <span class="player-name">${p.name}</span>
+          <span class="player-name">${escapeHtml(p.name)}</span>
         </div>
       `).join('');
     }
 
+    function escapeHtml(str) {
+      return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+      });
+    }
+
     async function joinAsPlayer(team) {
-      const name = loadFromStorage('playerName') || 'لاعب';
+      const name = loadFromStorage('playerName');
+      if (!name) {
+        showToast('يرجى إدخال اسمك أولاً', 'error');
+        return;
+      }
       const playerId = getOrCreatePlayerId();
       try {
         await addPlayerToRoom(currentRoomCode, team, name, playerId);
@@ -283,6 +299,7 @@
         window.location.href = url;
       } catch(e) {
         showToast('خطأ في الانضمام للفريق', 'error');
+        console.error(e);
       }
     }
 
