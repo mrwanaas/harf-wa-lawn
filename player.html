@@ -141,7 +141,7 @@
   <script src="firebase-config.js"></script>
   <script src="app.js"></script>
 
-  <script>
+<script>
     let myTeam = null;
     let myName = null;
     let myId = null;
@@ -167,7 +167,6 @@
       }
 
       if (roomCode && myTeam) {
-        // Auto-join if all params present
         const savedName = loadFromStorage('playerName') || nameParam;
         if (savedName) {
           myName = savedName;
@@ -204,7 +203,7 @@
         // Team banner
         const banner = document.getElementById('team-banner');
         banner.className = `team-banner ${myTeam}`;
-        banner.innerHTML = `<span>${myTeam === 'red' ? '🔴 الفريق الأحمر' : '🔵 الفريق الأزرق'}</span><span style="font-size:0.9rem; font-weight: 400;">مرحباً ${myName}!</span>`;
+        banner.innerHTML = `<span>${myTeam === 'red' ? '🔴 الفريق الأحمر' : '🔵 الفريق الأزرق'}</span><span style="font-size:0.9rem; font-weight: 400;">مرحباً ${escapeHtml(myName)}!</span>`;
 
         document.getElementById('room-info-display').textContent = `الغرفة: ${roomCode}`;
 
@@ -219,6 +218,7 @@
     }
 
     function handleGameState(state) {
+      if (!state) return;
       lastGameState = state;
 
       // Update scores
@@ -241,6 +241,8 @@
         document.getElementById('p-question-area').classList.remove('hidden');
         document.getElementById('p-question-text').textContent = question.question;
         document.getElementById('p-question-category').textContent = question.category || '';
+        document.getElementById('p-target-letter').textContent = question.firstLetter;
+        document.getElementById('p-target-letter-badge').classList.remove('hidden');
       } else {
         document.getElementById('p-question-area').classList.add('hidden');
       }
@@ -266,10 +268,10 @@
       document.getElementById('p-waiting-msg').classList.remove('hidden');
       const timerSection = document.getElementById('p-timer-section');
 
-      if (phase === 'idle' || !round.timerActive && !hasSomeoneBuzzed) {
+      if (phase === 'idle' || (!round.timerActive && !hasSomeoneBuzzed)) {
         phaseBar.classList.add('phase-idle');
         phaseBar.textContent = 'انتظر الحكم...';
-        timerSection.style.display = 'none';
+        if (timerSection) timerSection.style.display = 'none';
         stopTimer();
       } else if (phase === 'active' && round.timerActive) {
         document.getElementById('p-waiting-msg').classList.add('hidden');
@@ -277,15 +279,17 @@
         const teamName = activeTeam === 'red' ? 'الفريق الأحمر' : 'الفريق الأزرق';
         phaseBar.textContent = isMyTeamActive ? '⚡ دورك! اضغط الزر!' : `⏳ ${teamName} يجيب الآن`;
 
-        timerSection.style.display = 'flex';
-        startClientTimer(round.timerEnd);
+        if (timerSection) {
+          timerSection.style.display = 'flex';
+          startClientTimer(round.timerEnd);
+        }
         document.getElementById('p-active-team-label').textContent = `يجيب: ${teamName}`;
 
-        if (isMyTeamActive && !hasSomeoneBuzzed) {
+        if (isMyTeamActive && !hasSomeoneBuzzed && !hasBuzzed) {
           document.getElementById('p-buzz-section').classList.remove('hidden');
           const buzzBtn = document.getElementById('buzz-btn');
           buzzBtn.className = `buzz-btn ${myTeam === 'red' ? 'red-buzz' : 'blue-buzz'}`;
-          buzzBtn.disabled = hasBuzzed;
+          buzzBtn.disabled = false;
         }
       } else if (phase === 'buzzed' || phase === 'answered') {
         document.getElementById('p-waiting-msg').classList.add('hidden');
@@ -307,7 +311,7 @@
           document.getElementById('p-other-buzzed-text').textContent =
             `${round.buzzedPlayer || 'لاعب'} (${round.buzzedTeam === 'red' ? 'الأحمر' : 'الأزرق'}) يجيب...`;
         }
-        timerSection.style.display = 'none';
+        if (timerSection) timerSection.style.display = 'none';
         stopTimer();
       }
 
@@ -329,6 +333,7 @@
       } catch(e) {
         hasBuzzed = false;
         document.getElementById('buzz-btn').disabled = false;
+        showToast('خطأ في الإرسال', 'error');
       }
     }
 
@@ -360,12 +365,15 @@
     }
 
     function updateTimerDisplay(seconds) {
-      document.getElementById('p-timer-text').textContent = seconds;
+      const timerText = document.getElementById('p-timer-text');
       const progress = document.getElementById('p-timer-progress');
-      const fraction = seconds / 10;
-      const circumference = 314;
-      progress.style.strokeDashoffset = circumference * (1 - fraction);
-      progress.className = 'timer-progress' + (seconds <= 3 ? ' urgent' : seconds <= 6 ? ' warning' : '');
+      if (timerText) timerText.textContent = seconds;
+      if (progress) {
+        const circumference = 314;
+        const fraction = seconds / 10;
+        progress.style.strokeDashoffset = circumference * (1 - fraction);
+        progress.className = 'timer-progress' + (seconds <= 3 ? ' urgent' : seconds <= 6 ? ' warning' : '');
+      }
     }
 
     function showGameEnded(state) {
@@ -398,6 +406,19 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && isMyTurnToAnswer) submitPlayerAnswer();
     });
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+      });
+    }
+
+    window.confirmJoin = confirmJoin;
+    window.buzz = buzz;
+    window.submitPlayerAnswer = submitPlayerAnswer;
   </script>
 </body>
 </html>
