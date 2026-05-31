@@ -37,6 +37,7 @@ function initFirebase() {
     window.firebasePush = push;
     window.firebaseRemove = remove;
     window.firebaseServerTimestamp = serverTimestamp;
+    console.log("Firebase initialized successfully");
     return true;
   } catch (e) {
     console.error('Firebase init error:', e);
