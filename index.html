@@ -18,12 +18,8 @@
     .tab-item { flex: 1; padding: 14px; text-align: center; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 1rem; border: none; font-family: var(--font-main); color: var(--text-muted); background: transparent; }
     .tab-item.active { background: var(--bg-card); color: var(--text-primary); }
     .step-label { background: linear-gradient(135deg, #4a4fcc, #6c71f0); color: white; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; margin-left: 8px; }
-    .qr-row { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
-    .qr-box { text-align: center; }
-    .qr-box-label { font-size: 0.85rem; font-weight: 600; margin-bottom: 10px; }
     .judge-link { text-align: center; margin-top: 16px; }
     .copy-btn { font-size: 0.8rem; padding: 6px 14px; }
-    .hero-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(241,196,15,0.12); border: 1px solid rgba(241,196,15,0.3); color: var(--gold); padding: 6px 16px; border-radius: 100px; font-size: 0.85rem; font-weight: 600; margin-bottom: 16px; }
   </style>
 </head>
 <body>
@@ -92,20 +88,17 @@
         <h3 style="text-align:center; margin-bottom: 16px;">اختر فريقك للانضمام</h3>
 
         <div class="home-grid">
-          <!-- RED TEAM -->
           <div class="team-join-card card red-card" onclick="joinAsPlayer('red')">
             <div class="team-icon">🔴</div>
             <div class="team-name" style="color: var(--red-light);">الفريق الأحمر</div>
             <div id="red-player-count" class="team-count">٠ لاعبين</div>
-            <div id="red-qr" class="qr-container" style="width:120px; height:120px; background:white; padding: 8px; border-radius: 8px;"></div>
+            <div id="red-qr" style="width:120px; height:120px; background:white; padding: 8px; border-radius: 8px;"></div>
           </div>
-
-          <!-- BLUE TEAM -->
           <div class="team-join-card card blue-card" onclick="joinAsPlayer('blue')">
             <div class="team-icon">🔵</div>
             <div class="team-name" style="color: var(--blue-light);">الفريق الأزرق</div>
             <div id="blue-player-count" class="team-count">٠ لاعبين</div>
-            <div id="blue-qr" class="qr-container" style="width:120px; height:120px; background:white; padding:8px; border-radius: 8px;"></div>
+            <div id="blue-qr" style="width:120px; height:120px; background:white; padding:8px; border-radius: 8px;"></div>
           </div>
         </div>
 
@@ -143,48 +136,20 @@
   <script src="firebase-config.js"></script>
   <script src="app.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="questions.js"></script>
 
   <script>
     let currentRoomCode = null;
     let roomSubscription = null;
-    let firebaseInitialized = false;
 
-    // Disable create/join buttons until Firebase is ready
-    window.addEventListener('DOMContentLoaded', () => {
-      const createBtn = document.querySelector('#tab-create .btn-primary');
-      const joinBtn = document.querySelector('#tab-join .btn-primary');
-      if (createBtn) createBtn.disabled = true;
-      if (joinBtn) joinBtn.disabled = true;
-    });
-
-    window.addEventListener('firebase-ready', async () => {
-      console.log("Firebase ready event received");
-      try {
-        await initFirebase();
-        hideReconnecting();
-        loadSavedData();
-        firebaseInitialized = true;
-        // Enable buttons
-        const createBtn = document.querySelector('#tab-create .btn-primary');
-        const joinBtn = document.querySelector('#tab-join .btn-primary');
-        if (createBtn) createBtn.disabled = false;
-        if (joinBtn) joinBtn.disabled = false;
-        console.log("Firebase ready, UI enabled");
-      } catch (err) {
-        console.error("Init failed:", err);
-        showToast("فشل الاتصال بقاعدة البيانات. تأكد من إعدادات Firebase", "error");
-      }
-    });
-
-    function loadSavedData() {
-      const name = loadFromStorage('playerName');
-      if (name) {
-        document.getElementById('create-name').value = name;
-        document.getElementById('join-name').value = name;
-      }
-      const code = loadFromStorage('lastRoomCode');
-      if (code) document.getElementById('join-code').value = code;
+    // Load saved name
+    const savedName = loadFromStorage('playerName');
+    if (savedName) {
+      document.getElementById('create-name').value = savedName;
+      document.getElementById('join-name').value = savedName;
     }
+    const savedCode = loadFromStorage('lastRoomCode');
+    if (savedCode) document.getElementById('join-code').value = savedCode;
 
     window.switchTab = function(tab) {
       document.getElementById('tab-create').classList.toggle('hidden', tab !== 'create');
@@ -195,41 +160,41 @@
     };
 
     window.createRoomFlow = async function() {
-      if (!firebaseInitialized) { showToast("جاري الاتصال بقاعدة البيانات، انتظر لحظة", "warning"); return; }
       const name = document.getElementById('create-name').value.trim();
       if (!name) { showToast('أدخل اسمك أولاً', 'error'); return; }
       saveToStorage('playerName', name);
       currentRoomCode = generateRoomCode();
       saveToStorage('lastRoomCode', currentRoomCode);
+      
       showToast('جاري إنشاء الغرفة...', 'info');
       try {
         await createRoom(currentRoomCode, name);
         showRoomScreen(currentRoomCode);
-        showToast('تم إنشاء الغرفة! شارك الكود مع أصدقائك', 'success');
+        showToast('تم إنشاء الغرفة!', 'success');
       } catch(e) {
         console.error(e);
-        showToast('خطأ في إنشاء الغرفة: ' + (e.message || e), 'error');
+        showToast('خطأ: ' + (e.message || e), 'error');
       }
     };
 
     window.joinRoomFlow = async function() {
-      if (!firebaseInitialized) { showToast("جاري الاتصال بقاعدة البيانات، انتظر لحظة", "warning"); return; }
       const name = document.getElementById('join-name').value.trim();
       const code = document.getElementById('join-code').value.trim();
       if (!name) { showToast('أدخل اسمك أولاً', 'error'); return; }
-      if (!isValidRoomCode(code)) { showToast('الكود يجب أن يكون 6 أرقام', 'error'); return; }
+      if (!isValidRoomCode(code)) { showToast('الكود 6 أرقام', 'error'); return; }
       saveToStorage('playerName', name);
       saveToStorage('lastRoomCode', code);
+      
       showToast('جاري الانضمام...', 'info');
       try {
         const roomData = await joinRoom(code);
         if (!roomData) { showToast('الغرفة غير موجودة', 'error'); return; }
         currentRoomCode = code;
         showRoomScreen(code);
-        showToast('تم الانضمام للغرفة بنجاح!', 'success');
+        showToast('تم الانضمام', 'success');
       } catch(e) {
         console.error(e);
-        showToast('خطأ في الانضمام للغرفة: ' + (e.message || e), 'error');
+        showToast('خطأ: ' + (e.message || e), 'error');
       }
     };
 
@@ -237,69 +202,48 @@
       document.getElementById('setup-screen').classList.add('hidden');
       document.getElementById('room-screen').classList.remove('hidden');
       document.getElementById('display-room-code').textContent = roomCode;
+      
       setTimeout(() => {
-        generateQR('red-qr', buildUrl('player.html', { room: roomCode, team: 'red' }), '#e74c3c');
-        generateQR('blue-qr', buildUrl('player.html', { room: roomCode, team: 'blue' }), '#3498db');
+        try {
+          new QRCode(document.getElementById('red-qr'), { text: buildUrl('player.html', { room: roomCode, team: 'red' }), width: 100, height: 100, colorDark: '#e74c3c', colorLight: '#ffffff' });
+          new QRCode(document.getElementById('blue-qr'), { text: buildUrl('player.html', { room: roomCode, team: 'blue' }), width: 100, height: 100, colorDark: '#3498db', colorLight: '#ffffff' });
+        } catch(e) {}
       }, 100);
+      
       if (roomSubscription) roomSubscription();
       roomSubscription = subscribeToRoom(roomCode, updateRoomDisplay);
-    }
-
-    function generateQR(containerId, url, color) {
-      const container = document.getElementById(containerId);
-      if (!container) return;
-      container.innerHTML = '';
-      if (typeof QRCode !== 'undefined') {
-        try {
-          new QRCode(container, { text: url, width: 100, height: 100, colorDark: color, colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
-        } catch(e) {
-          container.innerHTML = `<a href="${url}" target="_blank" style="font-size:0.7rem;">رابط اللاعب</a>`;
-        }
-      } else {
-        container.innerHTML = `<a href="${url}" target="_blank" style="font-size:0.7rem;">رابط اللاعب</a>`;
-      }
     }
 
     function updateRoomDisplay(state) {
       if (!state) return;
       const redPlayers = state.teams?.red?.players || {};
       const bluePlayers = state.teams?.blue?.players || {};
-      const redCount = Object.keys(redPlayers).length;
-      const blueCount = Object.keys(bluePlayers).length;
-      document.getElementById('red-player-count').textContent = `${redCount} لاعب`;
-      document.getElementById('blue-player-count').textContent = `${blueCount} لاعب`;
-      renderPlayerList('red-players-list', redPlayers);
-      renderPlayerList('blue-players-list', bluePlayers);
+      document.getElementById('red-player-count').textContent = `${Object.keys(redPlayers).length} لاعب`;
+      document.getElementById('blue-player-count').textContent = `${Object.keys(bluePlayers).length} لاعب`;
+      
+      const redList = document.getElementById('red-players-list');
+      redList.innerHTML = Object.values(redPlayers).length ? Object.values(redPlayers).map(p => `<div class="player-item"><div class="player-dot"></div><span class="player-name">${p.name}</span></div>`).join('') : '<p style="color: var(--text-muted); font-size: 0.8rem;">لا يوجد لاعبون بعد</p>';
+      const blueList = document.getElementById('blue-players-list');
+      blueList.innerHTML = Object.values(bluePlayers).length ? Object.values(bluePlayers).map(p => `<div class="player-item"><div class="player-dot"></div><span class="player-name">${p.name}</span></div>`).join('') : '<p style="color: var(--text-muted); font-size: 0.8rem;">لا يوجد لاعبون بعد</p>';
     }
-
-    function renderPlayerList(containerId, players) {
-      const container = document.getElementById(containerId);
-      const list = Object.values(players);
-      if (list.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-muted); font-size: 0.8rem;">لا يوجد لاعبون بعد</p>';
-        return;
-      }
-      container.innerHTML = list.map(p => `<div class="player-item"><div class="player-dot"></div><span class="player-name">${escapeHtml(p.name)}</span></div>`).join('');
-    }
-
-    function escapeHtml(str) { return str.replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m])); }
 
     window.joinAsPlayer = async function(team) {
       const name = loadFromStorage('playerName');
-      if (!name) { showToast('يرجى إدخال اسمك أولاً في التبويب المناسب', 'error'); return; }
+      if (!name) { showToast('أدخل اسمك أولاً في التبويب', 'error'); return; }
       const playerId = getOrCreatePlayerId();
       try {
         await addPlayerToRoom(currentRoomCode, team, name, playerId);
-        const url = buildUrl('player.html', { room: currentRoomCode, team, name: encodeURIComponent(name) });
-        window.location.href = url;
-      } catch(e) { showToast('خطأ في الانضمام للفريق: ' + e.message, 'error'); }
+        window.location.href = buildUrl('player.html', { room: currentRoomCode, team, name: encodeURIComponent(name) });
+      } catch(e) { showToast('خطأ: ' + e.message, 'error'); }
     };
-    window.joinAsJudge = function() { window.location.href = buildUrl('judge.html', { room: currentRoomCode }); };
-    window.copyRoomCode = function() { if (currentRoomCode) navigator.clipboard.writeText(currentRoomCode).then(()=>showToast('تم نسخ الكود!','success')).catch(()=>showToast('الكود: '+currentRoomCode,'info')); };
-    window.addEventListener('load', () => {
-      const roomParam = getUrlParam('room'), teamParam = getUrlParam('team');
-      if (roomParam && teamParam) { currentRoomCode = roomParam; document.getElementById('join-code').value = roomParam; switchTab('join'); }
-    });
+    
+    window.joinAsJudge = function() {
+      window.location.href = buildUrl('judge.html', { room: currentRoomCode });
+    };
+    
+    window.copyRoomCode = function() {
+      if (currentRoomCode) navigator.clipboard.writeText(currentRoomCode).then(() => showToast('تم نسخ الكود!', 'success'));
+    };
   </script>
 </body>
 </html>
