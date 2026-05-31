@@ -381,11 +381,11 @@
     }
 
     async function startRound() {
-      if (!currentQuestion) { showToast('ولّد سؤالاً أولاً', 'error'); return; }
-      // Start a 10-second timer for both teams to buzz
-      await startTimer(roomCode, null, 10); // activeTeam = null means both can buzz
-      showToast('بدأ السباق! من يضغط أولاً؟', 'info');
-    }
+  if (!currentQuestion) { showToast('ولّد سؤالاً أولاً', 'error'); return; }
+  // activeTeam = null means both teams can buzz
+  await startTimer(roomCode, null, 10);
+  showToast('بدأ السباق! من يضغط أولاً؟', 'info');
+}
 
     function startJudgeTimer(timerEnd) {
       stopTimer();
