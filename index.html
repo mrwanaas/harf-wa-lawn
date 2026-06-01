@@ -88,19 +88,19 @@
         <h3 style="text-align:center; margin-bottom: 16px;">اختر فريقك للانضمام</h3>
 
         <div class="home-grid">
-          <div class="team-join-card card red-card" onclick="joinAsPlayer('red')">
-            <div class="team-icon">🔴</div>
-            <div class="team-name" style="color: var(--red-light);">الفريق الأحمر</div>
-            <div id="red-player-count" class="team-count">٠ لاعبين</div>
-            <div id="red-qr" style="width:120px; height:120px; background:white; padding: 8px; border-radius: 8px;"></div>
-          </div>
-          <div class="team-join-card card blue-card" onclick="joinAsPlayer('blue')">
-            <div class="team-icon">🔵</div>
-            <div class="team-name" style="color: var(--blue-light);">الفريق الأزرق</div>
-            <div id="blue-player-count" class="team-count">٠ لاعبين</div>
-            <div id="blue-qr" style="width:120px; height:120px; background:white; padding:8px; border-radius: 8px;"></div>
-          </div>
-        </div>
+  <button class="team-join-card card red-card" onclick="joinAsPlayer('red')">
+    <div class="team-icon">🔴</div>
+    <div class="team-name" style="color: var(--red-light);">الفريق الأحمر</div>
+    <div id="red-player-count" class="team-count">٠ لاعبين</div>
+    <div id="red-qr" style="width:120px; height:120px; background:white; padding: 8px; border-radius: 8px;"></div>
+  </button>
+  <button class="team-join-card card blue-card" onclick="joinAsPlayer('blue')">
+    <div class="team-icon">🔵</div>
+    <div class="team-name" style="color: var(--blue-light);">الفريق الأزرق</div>
+    <div id="blue-player-count" class="team-count">٠ لاعبين</div>
+    <div id="blue-qr" style="width:120px; height:120px; background:white; padding:8px; border-radius: 8px;"></div>
+  </button>
+</div>
 
         <div class="judge-link">
           <button class="btn btn-ghost btn-block" onclick="joinAsJudge()" style="border-color: var(--gold); color: var(--gold);">
