@@ -162,6 +162,7 @@ async function submitAnswer(roomCode, answer) {
 }
 
 async function markLetterWon(roomCode, letter, team) {
+  console.log("markLetterWon called", roomCode, letter, team);
   await ensureFirebase();
   const { ref, set, update, get } = window.firebaseModules;
   const key = encodeLetterKey(letter);
@@ -172,6 +173,7 @@ async function markLetterWon(roomCode, letter, team) {
     const score = Object.values(state.letters || {}).filter(l => l && l.owner === team).length;
     await update(ref(db, `rooms/${roomCode}/teams/${team}`), { score });
   }
+  console.log("Letter marked, score updated");
 }
 
 async function getGameState(roomCode) {
@@ -182,6 +184,7 @@ async function getGameState(roomCode) {
 }
 
 async function resetRound(roomCode) {
+  console.log("resetRound called");
   await ensureFirebase();
   const { ref, set } = window.firebaseModules;
   await set(ref(db, `rooms/${roomCode}/currentRound`), {
@@ -189,6 +192,7 @@ async function resetRound(roomCode) {
     buzzedPlayer: null, buzzedTeam: null, playerAnswer: null, phase: 'idle'
   });
   await set(ref(db, `rooms/${roomCode}/currentQuestion`), null);
+  console.log("Round reset");
 }
 
 async function updateGameState(roomCode, updates) {
