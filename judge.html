@@ -9,17 +9,12 @@
     .judge-layout { display: grid; grid-template-columns: 1fr 1.4fr; gap: 16px; align-items: start; }
     @media(max-width:900px) { .judge-layout { grid-template-columns: 1fr; } }
     .judge-page { max-width: 1100px; margin: 0 auto; padding: 16px; }
-    .control-panel { display: flex; flex-direction: column; gap: 12px; }
-    .big-start-btn { padding: 24px; font-size: 1.4rem; border-radius: 16px; min-height: 80px; }
-    .team-selector { display: flex; gap: 8px; margin-bottom: 12px; }
-    .team-select-btn { flex: 1; padding: 14px; border: 2px solid var(--border); border-radius: var(--radius); background: var(--bg-card2); color: var(--text-secondary); font-weight: 700; cursor: pointer; transition: all 0.2s; }
-    .team-select-btn.active-red { border-color: var(--red); background: rgba(231,76,60,0.15); color: var(--red-light); }
-    .team-select-btn.active-blue { border-color: var(--blue); background: rgba(52,152,219,0.15); color: var(--blue-light); }
+    .big-start-btn { padding: 24px; font-size: 1.4rem; border-radius: 16px; }
     .buzz-alert { background: rgba(241,196,15,0.12); border: 1px solid rgba(241,196,15,0.4); border-radius: var(--radius); padding: 16px; animation: glow-pulse 1.5s infinite; margin-bottom: 16px; }
     @keyframes glow-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(241,196,15,0.3); } 50% { box-shadow: 0 0 20px rgba(241,196,15,0.3); } }
     .players-summary { display: flex; gap: 8px; margin-top: 12px; }
     .players-mini { flex: 1; background: var(--bg-card2); border-radius: var(--radius-sm); padding: 8px; }
-    .mini-title { font-weight: 700; margin-bottom: 8px; font-size: 0.85rem; }
+    .mini-title { font-weight: 700; margin-bottom: 8px; }
     .mini-player { padding: 4px 8px; background: var(--bg-dark); border-radius: 6px; margin-bottom: 4px; font-size: 0.8rem; }
     .history-list { max-height: 200px; overflow-y: auto; }
     .history-item { display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--bg-card2); border-radius: var(--radius-sm); margin-bottom: 6px; }
@@ -37,146 +32,69 @@
   <div id="toast-container"></div>
   <div id="reconnect-overlay"><div class="reconnect-box"><div class="spinner"></div><p>جاري الاتصال...</p></div></div>
 
-  <!-- Winner Modal -->
   <div id="winner-modal" class="modal-overlay hidden">
     <div class="modal">
-      <div style="font-size: 4rem; margin-bottom: 16px;" id="winner-emoji">🏆</div>
-      <h2 id="winner-title" style="margin-bottom: 12px;">انتهت اللعبة!</h2>
-      <div class="scores-row" style="justify-content: center; margin-bottom: 20px;">
-        <div class="score-card red"><span class="score-number" id="final-r">0</span><div class="score-label">أحمر</div></div>
-        <div class="score-card blue"><span class="score-number" id="final-b">0</span><div class="score-label">أزرق</div></div>
-      </div>
+      <div style="font-size: 4rem;" id="winner-emoji">🏆</div>
+      <h2 id="winner-title">انتهت اللعبة!</h2>
+      <div class="scores-row"><div class="score-card red"><span id="final-r">0</span></div><div class="score-card blue"><span id="final-b">0</span></div></div>
       <button class="btn btn-primary" onclick="document.getElementById('winner-modal').classList.add('hidden')">إغلاق</button>
     </div>
   </div>
 
   <div class="judge-page">
-    <!-- HEADER -->
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
-      <div>
-        <h1 style="font-size: 1.6rem;">⚖️ لوحة الحكم</h1>
-        <span id="judge-room-info" style="font-size:0.8rem; color: var(--text-muted);">الغرفة: ---</span>
-      </div>
+    <div style="display: flex; justify-content: space-between; margin-bottom: 16px;">
+      <div><h1>⚖️ لوحة الحكم</h1><span id="judge-room-info">الغرفة: ---</span></div>
       <div style="display: flex; gap: 8px;">
-        <div class="score-card red" style="padding: 8px 16px;">
-          <span class="score-number" id="j-score-red" style="font-size:1.8rem;">0</span>
-          <div class="score-label">🔴 أحمر</div>
-        </div>
-        <div class="score-card blue" style="padding: 8px 16px;">
-          <span class="score-number" id="j-score-blue" style="font-size:1.8rem;">0</span>
-          <div class="score-label">🔵 أزرق</div>
-        </div>
-        <button class="btn btn-ghost btn-sm" onclick="confirmEndGame()" style="border-color: var(--red); color: var(--red);">إنهاء اللعبة</button>
+        <div class="score-card red"><span id="j-score-red" style="font-size:1.8rem;">0</span><div class="score-label">أحمر</div></div>
+        <div class="score-card blue"><span id="j-score-blue" style="font-size:1.8rem;">0</span><div class="score-label">أزرق</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="confirmEndGame()" style="border-color:var(--red);">إنهاء</button>
       </div>
     </div>
 
     <div class="judge-layout">
-      <!-- LEFT: Letters + Players -->
       <div>
         <div class="card mb-2">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-            <span style="font-size: 0.8rem; color: var(--red-light);" id="prog-red-text">أحمر: 0</span>
-            <span style="font-size: 0.8rem; color: var(--text-muted);" id="prog-unclaimed">متاح: 28</span>
-            <span style="font-size: 0.8rem; color: var(--blue-light);" id="prog-blue-text">أزرق: 0</span>
-          </div>
-          <div class="progress-bar"><div id="prog-red-fill" class="progress-fill progress-red" style="width:0%; float: right;"></div></div>
-          <div class="progress-bar" style="margin-top: 4px;"><div id="prog-blue-fill" class="progress-fill progress-blue" style="width:0%;"></div></div>
+          <div style="display:flex; justify-content:space-between;"><span id="prog-red-text">أحمر:0</span><span id="prog-unclaimed">متاح:28</span><span id="prog-blue-text">أزرق:0</span></div>
+          <div class="progress-bar"><div id="prog-red-fill" class="progress-fill progress-red" style="width:0%"></div></div>
+          <div class="progress-bar"><div id="prog-blue-fill" class="progress-fill progress-blue" style="width:0%"></div></div>
         </div>
-
-        <div class="card mb-2">
-          <h4>الحروف</h4>
-          <div id="judge-letters-grid" class="letters-grid"></div>
-        </div>
-
-        <div class="card">
-          <h4>اللاعبون</h4>
-          <div class="players-summary">
-            <div class="players-mini">
-              <div class="mini-title" style="color: var(--red-light);">🔴 الأحمر</div>
-              <div id="j-red-players">لا يوجد</div>
-            </div>
-            <div class="players-mini">
-              <div class="mini-title" style="color: var(--blue-light);">🔵 الأزرق</div>
-              <div id="j-blue-players">لا يوجد</div>
-            </div>
-          </div>
-        </div>
+        <div class="card mb-2"><h4>الحروف</h4><div id="judge-letters-grid" class="letters-grid"></div></div>
+        <div class="card"><h4>اللاعبون</h4><div class="players-summary"><div class="players-mini"><div class="mini-title">🔴 الأحمر</div><div id="j-red-players"></div></div><div class="players-mini"><div class="mini-title">🔵 الأزرق</div><div id="j-blue-players"></div></div></div></div>
       </div>
 
-      <!-- RIGHT: Controls -->
       <div class="control-panel">
         <div id="j-phase-bar" class="phase-bar phase-idle">⏳ انتظر...</div>
-
-        <!-- BUZZ ALERT -->
         <div id="j-buzz-alert" class="buzz-alert hidden">
-          <div style="font-size: 0.8rem; margin-bottom: 6px;">⚡ ضغط زر الإجابة</div>
-          <div id="j-buzzed-player" style="font-size: 1.2rem; font-weight: 900; color: var(--gold);"></div>
-          <div id="j-player-answer" style="margin-top: 10px; display: none;">
-            <span style="color: var(--text-muted);">الإجابة:</span>
-            <div id="j-answer-text" style="font-size: 1.3rem; font-weight: 700; margin-top: 4px;"></div>
-          </div>
-          <div id="j-judge-buttons" style="display: none; gap: 10px; margin-top: 12px;">
+          <div>⚡ ضغط زر الإجابة</div>
+          <div id="j-buzzed-player" style="font-size:1.2rem;font-weight:900;color:var(--gold);"></div>
+          <div id="j-player-answer" style="display:none;"><span>الإجابة:</span><div id="j-answer-text"></div></div>
+          <div id="j-judge-buttons" style="display:flex; gap:10px; margin-top:12px;">
             <button class="btn btn-green" onclick="judgeCorrect()">✅ صحيح</button>
             <button class="btn btn-danger" onclick="judgeWrong()">❌ خطأ</button>
           </div>
         </div>
 
-        <!-- Timer -->
-        <div id="j-timer-section" class="hidden" style="text-align: center;">
-          <div class="timer-circle">
-            <svg viewBox="0 0 120 120" style="width:100px; height:100px;">
-              <circle cx="60" cy="60" r="50" fill="none" stroke="var(--bg-card2)" stroke-width="8"/>
-              <circle id="j-timer-progress" cx="60" cy="60" r="50" fill="none" stroke="var(--green)" stroke-width="8" stroke-dasharray="314" stroke-dashoffset="0"/>
-            </svg>
-            <div style="position: relative; top: -65px; text-align: center; font-size: 1.6rem; font-weight: 900;" id="j-timer-text">10</div>
-          </div>
+        <div id="j-timer-section" class="hidden" style="text-align:center;">
+          <div class="timer-circle"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="50" fill="none" stroke="var(--bg-card2)" stroke-width="8"/><circle id="j-timer-progress" cx="60" cy="60" r="50" fill="none" stroke="var(--green)" stroke-width="8" stroke-dasharray="314" stroke-dashoffset="0"/></svg><div style="position:relative; top:-65px; font-size:1.8rem;" id="j-timer-text">10</div></div>
         </div>
 
-        <!-- Question -->
         <div class="card">
           <h4>السؤال الحالي</h4>
-          <div id="category-pills" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;"></div>
-          <button class="btn btn-primary btn-block" onclick="generateQuestion()" style="margin-bottom: 12px;">🎲 توليد سؤال جديد</button>
+          <div id="category-pills" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;"></div>
+          <button class="btn btn-primary btn-block" onclick="generateQuestion()" style="margin-bottom:12px;">🎲 توليد سؤال جديد</button>
           <div id="j-question-display" class="hidden">
-            <div class="question-box">
-              <div class="question-category" id="j-q-category"></div>
-              <div class="question-text" id="j-q-text"></div>
-              <div style="margin-top: 12px;">
-                <p style="font-size: 0.75rem; color: var(--text-muted);">الإجابة (مخفية للاعبين)</p>
-                <div class="answer-reveal-box">
-                  <div class="answer-reveal-text" id="j-q-answer" style="font-size:1.2rem; font-weight:bold;"></div>
-                  <div style="margin-top: 8px;">
-                    <span style="font-size:0.8rem;">يبدأ بحرف:</span>
-                    <div id="j-q-letter" class="first-letter-badge" style="width:40px; height:40px; margin:8px auto 0;"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <div class="question-box"><div class="question-category" id="j-q-category"></div><div class="question-text" id="j-q-text"></div><div style="margin-top:12px;"><p style="font-size:0.75rem;">الإجابة (مخفية)</p><div class="answer-reveal-box"><div id="j-q-answer" style="font-size:1.2rem;font-weight:bold;"></div><div><span>يبدأ بحرف:</span><div id="j-q-letter" class="first-letter-badge" style="width:40px;height:40px;margin:8px auto;"></div></div></div></div></div>
           </div>
-          <div id="j-no-question" style="text-align: center; color: var(--text-muted); padding: 16px;">اضغط "توليد سؤال" للبدء</div>
+          <div id="j-no-question" style="text-align:center; padding:16px;">اضغط "توليد سؤال"</div>
         </div>
 
-        <!-- Round Controls -->
         <div class="card">
-          <h4>التحكم بالجولة</h4>
-          <div class="team-selector">
-            <button class="team-select-btn" id="sel-red" onclick="selectTeam('red')">🔴 الأحمر</button>
-            <button class="team-select-btn" id="sel-blue" onclick="selectTeam('blue')">🔵 الأزرق</button>
-          </div>
+          <h4>التحكم</h4>
           <button id="start-round-btn" class="btn btn-primary btn-block big-start-btn" onclick="startRound()" disabled>▶️ بدء الجولة (10 ثوانٍ)</button>
-          <div style="display: flex; gap: 8px; margin-top: 8px;">
-            <button class="btn btn-ghost" onclick="passToOther()" id="pass-btn" disabled>🔄 مرر للفريق الآخر</button>
-            <button class="btn btn-ghost" onclick="skipQuestion()" style="border-color: var(--text-muted);">⏭️ سؤال جديد</button>
-          </div>
+          <button id="skip-btn" class="btn btn-ghost btn-block" onclick="skipQuestion()" style="margin-top:8px;">⏭️ سؤال جديد</button>
         </div>
 
-        <!-- History -->
-        <div class="card">
-          <h4>سجل الحروف</h4>
-          <div id="j-history-list" class="history-list">
-            <p style="color: var(--text-muted); text-align: center;">لا يوجد سجل</p>
-          </div>
-        </div>
+        <div class="card"><h4>سجل الحروف</h4><div id="j-history-list" class="history-list"><p style="text-align:center;">لا يوجد سجل</p></div></div>
       </div>
     </div>
   </div>
@@ -192,20 +110,14 @@
   <script src="app.js"></script>
   <script src="questions.js"></script>
 
-<script>
-    let roomCode = null;
-    let lastState = null;
-    let currentQuestion = null;
-    let qManager = null;
-    let timerInterval = null;
-    let history = [];
-    let selectedCategory = 'all';
+  <script>
+    let roomCode, lastState, currentQuestion, qManager, timerInterval, history=[], selectedCategory='all';
 
     document.addEventListener('firebase-ready', async () => {
       await initFirebase();
       hideReconnecting();
       roomCode = getUrlParam('room');
-      if (!roomCode) { showToast('لا يوجد رقم غرفة في الرابط', 'error'); return; }
+      if (!roomCode) { showToast('لا يوجد رقم غرفة','error'); return; }
       document.getElementById('judge-room-info').textContent = `الغرفة: ${roomCode}`;
       qManager = new QuestionManager();
       buildCategoryPills();
@@ -280,10 +192,8 @@
     function renderJudgePlayers(teams) {
       const redPlayers = teams?.red?.players || {};
       const bluePlayers = teams?.blue?.players || {};
-      const redList = document.getElementById('j-red-players');
-      const blueList = document.getElementById('j-blue-players');
-      redList.innerHTML = Object.values(redPlayers).length ? Object.values(redPlayers).map(p => `<div class="mini-player">${p.name}</div>`).join('') : 'لا يوجد';
-      blueList.innerHTML = Object.values(bluePlayers).length ? Object.values(bluePlayers).map(p => `<div class="mini-player">${p.name}</div>`).join('') : 'لا يوجد';
+      document.getElementById('j-red-players').innerHTML = Object.values(redPlayers).length ? Object.values(redPlayers).map(p => `<div class="mini-player">${p.name}</div>`).join('') : 'لا يوجد';
+      document.getElementById('j-blue-players').innerHTML = Object.values(bluePlayers).length ? Object.values(bluePlayers).map(p => `<div class="mini-player">${p.name}</div>`).join('') : 'لا يوجد';
     }
 
     function handleRoundState(round, question) {
@@ -293,14 +203,13 @@
       const buzzAlert = document.getElementById('j-buzz-alert');
       const timerSec = document.getElementById('j-timer-section');
       const startBtn = document.getElementById('start-round-btn');
-      const passBtn = document.getElementById('pass-btn');
       const skipBtn = document.getElementById('skip-btn');
 
       phaseBar.className = 'phase-bar';
       buzzAlert.classList.add('hidden');
       timerSec.style.display = 'none';
-      if (passBtn) passBtn.style.display = 'none';
-      if (skipBtn) skipBtn.style.display = 'inline-flex';
+      startBtn.disabled = !question;
+      skipBtn.style.display = 'inline-flex';
 
       if (question) {
         document.getElementById('j-question-display').classList.remove('hidden');
@@ -309,26 +218,22 @@
         document.getElementById('j-q-text').textContent = question.question;
         document.getElementById('j-q-answer').textContent = question.answer;
         document.getElementById('j-q-letter').textContent = question.firstLetter;
-        startBtn.disabled = false;
       } else {
         document.getElementById('j-question-display').classList.add('hidden');
         document.getElementById('j-no-question').classList.remove('hidden');
-        startBtn.disabled = true;
       }
 
       switch(phase) {
         case 'idle':
           phaseBar.classList.add('phase-idle');
-          phaseBar.textContent = '⏳ اضغط "بدء الجولة" لبدء المؤقت';
-          if (passBtn) passBtn.style.display = 'none';
+          phaseBar.textContent = '⏳ اضغط "بدء الجولة"';
           stopTimer();
           break;
         case 'active':
           phaseBar.classList.add('phase-active');
-          phaseBar.textContent = `⚡ الجميع يمكنهم الضغط!`;
+          phaseBar.textContent = '⚡ الجميع يمكنهم الضغط!';
           timerSec.style.display = 'block';
           startBtn.disabled = true;
-          if (passBtn) passBtn.style.display = 'none';
           startJudgeTimer(round.timerEnd);
           break;
         case 'buzzed':
@@ -340,7 +245,6 @@
           document.getElementById('j-judge-buttons').style.display = 'none';
           playBuzz();
           stopTimer();
-          if (passBtn) passBtn.style.display = 'none';
           break;
         case 'answered':
           phaseBar.classList.add('phase-answered');
@@ -351,14 +255,12 @@
           document.getElementById('j-answer-text').textContent = round.playerAnswer || '';
           document.getElementById('j-judge-buttons').style.display = 'flex';
           stopTimer();
-          if (passBtn) passBtn.style.display = 'none';
           break;
         case 'waiting_other':
           phaseBar.classList.add('phase-idle');
-          phaseBar.textContent = `⏳ فرصة للفريق ${round.activeTeam === 'red' ? 'الأزرق' : 'الأحمر'} للإجابة`;
+          phaseBar.textContent = `⏳ فرصة للفريق ${round.activeTeam === 'red' ? 'الأزرق' : 'الأحمر'}`;
           timerSec.style.display = 'block';
           startJudgeTimer(round.timerEnd);
-          if (passBtn) passBtn.style.display = 'none';
           break;
       }
     }
@@ -367,25 +269,18 @@
       const letters = lastState?.letters || {};
       const wonList = Object.values(letters).filter(l => l?.owner).map(l => l.letter);
       const q = qManager.getRandomQuestion(wonList, selectedCategory === 'all' ? null : selectedCategory);
-      if (!q) { showToast('لا توجد أسئلة متاحة', 'warning'); return; }
+      if (!q) { showToast('لا توجد أسئلة متاحة','warning'); return; }
       currentQuestion = q;
       await setCurrentQuestion(roomCode, q);
-      document.getElementById('j-question-display').classList.remove('hidden');
-      document.getElementById('j-no-question').classList.add('hidden');
-      document.getElementById('j-q-category').textContent = q.category;
-      document.getElementById('j-q-text').textContent = q.question;
-      document.getElementById('j-q-answer').textContent = q.answer;
-      document.getElementById('j-q-letter').textContent = q.firstLetter;
       document.getElementById('start-round-btn').disabled = false;
-      showToast(`سؤال جديد: الإجابة تبدأ بـ "${q.firstLetter}"`, 'info');
+      showToast(`سؤال جديد: "${q.firstLetter}"`, 'info');
     }
 
     async function startRound() {
-  if (!currentQuestion) { showToast('ولّد سؤالاً أولاً', 'error'); return; }
-  // activeTeam = null means both teams can buzz
-  await startTimer(roomCode, null, 10);
-  showToast('بدأ السباق! من يضغط أولاً؟', 'info');
-}
+      if (!currentQuestion) { showToast('ولّد سؤالاً أولاً','error'); return; }
+      await startTimer(roomCode, null, 10);
+      showToast('بدأ السباق! من يضغط أولاً؟', 'info');
+    }
 
     function startJudgeTimer(timerEnd) {
       stopTimer();
@@ -394,7 +289,6 @@
         updateJudgeTimer(r);
         if (r <= 0) {
           stopTimer();
-          // If timer ends and no one buzzed, reset round
           if (lastState?.currentRound?.phase === 'active') {
             showToast('انتهى الوقت! لم يضغط أحد.', 'warning');
             resetRound(roomCode);
@@ -405,14 +299,10 @@
     }
 
     function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
-
-    function updateJudgeTimer(seconds) {
-      document.getElementById('j-timer-text').textContent = seconds;
-      const progress = document.getElementById('j-timer-progress');
-      const circumference = 314;
-      const fraction = seconds / 10;
-      progress.style.strokeDashoffset = circumference * (1 - fraction);
-      progress.style.stroke = seconds <= 3 ? 'var(--red)' : seconds <= 6 ? 'var(--orange)' : 'var(--green)';
+    function updateJudgeTimer(sec) {
+      document.getElementById('j-timer-text').textContent = sec;
+      const circ = 314, fraction = sec/10;
+      document.getElementById('j-timer-progress').style.strokeDashoffset = circ*(1-fraction);
     }
 
     async function judgeCorrect() {
@@ -424,9 +314,9 @@
       showToast(`✅ صحيح! الفريق ${round.buzzedTeam === 'red' ? 'الأحمر' : 'الأزرق'} يكسب حرف "${currentQuestion.firstLetter}"`, 'success', 3000);
       await resetRound(roomCode);
       currentQuestion = null;
+      document.getElementById('start-round-btn').disabled = true;
       document.getElementById('j-question-display').classList.add('hidden');
       document.getElementById('j-no-question').classList.remove('hidden');
-      document.getElementById('start-round-btn').disabled = true;
       const state = await getGameState(roomCode);
       const allWon = Object.values(state.letters || {}).every(l => l?.owner);
       if (allWon) await endGame(roomCode);
@@ -436,9 +326,9 @@
       const round = lastState?.currentRound;
       if (!round?.buzzedTeam || !currentQuestion) return;
       playWrong();
-      showToast(`❌ إجابة خاطئة! ستمر للفريق الآخر.`, 'error');
-      // Give the other team a chance (10 seconds to answer without buzzing)
       const otherTeam = round.buzzedTeam === 'red' ? 'blue' : 'red';
+      showToast(`❌ إجابة خاطئة! الفرصة للفريق ${otherTeam === 'red' ? 'الأحمر' : 'الأزرق'}`, 'error');
+      // Give other team 10 seconds to answer directly
       await updateGameState(roomCode, {
         'currentRound/activeTeam': otherTeam,
         'currentRound/timerEnd': Date.now() + 10000,
@@ -448,38 +338,32 @@
         'currentRound/playerAnswer': null,
         'currentRound/phase': 'waiting_other'
       });
-      showToast(`الفرصة الآن للفريق ${otherTeam === 'red' ? 'الأحمر' : 'الأزرق'}`, 'info');
     }
 
     async function skipQuestion() {
       await resetRound(roomCode);
       currentQuestion = null;
+      document.getElementById('start-round-btn').disabled = true;
       document.getElementById('j-question-display').classList.add('hidden');
       document.getElementById('j-no-question').classList.remove('hidden');
-      document.getElementById('start-round-btn').disabled = true;
       stopTimer();
       showToast('تم تخطي السؤال', 'info');
     }
 
-    function manualAssignLetter(letter, currentOwner) {
-      if (confirm(`تعيين "${letter}" للفريق الأحمر؟`)) markLetterWon(roomCode, letter, 'red');
-      else if (confirm(`تعيين "${letter}" للفريق الأزرق؟`)) markLetterWon(roomCode, letter, 'blue');
+    function manualAssignLetter(letter, owner) {
+      if (confirm(`تعيين "${letter}" للأحمر؟`)) markLetterWon(roomCode, letter, 'red');
+      else if (confirm(`تعيين "${letter}" للأزرق؟`)) markLetterWon(roomCode, letter, 'blue');
     }
 
     function addHistory(letter, team, answer) {
       history.unshift({ letter, team, answer });
       const container = document.getElementById('j-history-list');
-      container.innerHTML = history.slice(0, 10).map(h => `
-        <div class="history-item">
-          <div class="letter-won-chip ${h.team}">${h.letter}</div>
-          <div><div style="font-weight:700;">${h.answer}</div><div style="font-size:0.7rem;">${h.team === 'red' ? 'أحمر' : 'أزرق'}</div></div>
-        </div>
-      `).join('');
+      container.innerHTML = history.slice(0,10).map(h => `<div class="history-item"><div class="letter-won-chip ${h.team}">${h.letter}</div><div><div>${h.answer}</div><div style="font-size:0.7rem;">${h.team === 'red' ? 'أحمر' : 'أزرق'}</div></div></div>`).join('');
     }
 
     function confirmEndGame() { if (confirm('إنهاء اللعبة؟')) endGame(roomCode); }
     function showWinnerModal(state) {
-      const red = state.teams?.red?.score || 0, blue = state.teams?.blue?.score || 0;
+      const red = state.teams?.red?.score||0, blue = state.teams?.blue?.score||0;
       document.getElementById('final-r').textContent = red;
       document.getElementById('final-b').textContent = blue;
       let title, emoji;
@@ -492,7 +376,7 @@
       playCelebration();
     }
 
-    // Make functions global
+    // Expose globals
     window.setCategory = setCategory;
     window.generateQuestion = generateQuestion;
     window.startRound = startRound;
