@@ -143,7 +143,7 @@ async function buzzIn(roomCode, playerName, team) {
   await ensureFirebase();
   const { ref, update } = window.firebaseModules;
   await update(ref(db, `rooms/${roomCode}/currentRound`), {
-    buzzedPlayer: playerName,
+    buzzedPlayer: playerName,   // make sure this is a string
     buzzedTeam: team,
     timerActive: false,
     phase: 'buzzed'
