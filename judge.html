@@ -255,10 +255,13 @@ console.log("judgeCorrect called");
       showToast(`✅ صحيح! الفريق ${round.buzzedTeam==='red'?'الأحمر':'الأزرق'} يكسب حرف ${currentQuestion.firstLetter}`,'success');
       await resetRound(roomCode);
       currentQuestion = null;
-      document.getElementById('j-question-display').classList.add('hidden');
-      document.getElementById('j-no-question').classList.remove('hidden');
+document.getElementById('j-question-display').classList.add('hidden');
+document.getElementById('j-no-question').classList.remove('hidden');
+document.getElementById('start-round-btn').disabled = true;
       const state = await getGameState(roomCode);
       if(Object.values(state.letters||{}).every(l=>l?.owner)) await endGame(roomCode);
+
+      document.getElementById('j-buzz-alert').classList.add('hidden');
     }
 
     async function judgeWrong(){
