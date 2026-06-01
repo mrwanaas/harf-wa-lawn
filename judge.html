@@ -257,11 +257,13 @@
           stopTimer();
           break;
         case 'waiting_other':
-          phaseBar.classList.add('phase-idle');
-          phaseBar.textContent = `⏳ فرصة للفريق ${round.activeTeam === 'red' ? 'الأزرق' : 'الأحمر'}`;
-          timerSec.style.display = 'block';
-          startJudgeTimer(round.timerEnd);
-          break;
+  phaseBar.classList.add('phase-idle');
+  phaseBar.textContent = `⏳ فرصة للفريق ${round.activeTeam === 'red' ? 'الأحمر' : 'الأزرق'} للإجابة مباشرة`;
+  timerSec.style.display = 'block';
+  startJudgeTimer(round.timerEnd);
+  // Hide buzz alert and show answer input for that team? The judge will see the answer when the player submits.
+  buzzAlert.classList.add('hidden');
+  break;
       }
     }
 
@@ -322,23 +324,25 @@
       if (allWon) await endGame(roomCode);
     }
 
-    async function judgeWrong() {
-      const round = lastState?.currentRound;
-      if (!round?.buzzedTeam || !currentQuestion) return;
-      playWrong();
-      const otherTeam = round.buzzedTeam === 'red' ? 'blue' : 'red';
-      showToast(`❌ إجابة خاطئة! الفرصة للفريق ${otherTeam === 'red' ? 'الأحمر' : 'الأزرق'}`, 'error');
-      // Give other team 10 seconds to answer directly
-      await updateGameState(roomCode, {
-        'currentRound/activeTeam': otherTeam,
-        'currentRound/timerEnd': Date.now() + 10000,
-        'currentRound/timerActive': true,
-        'currentRound/buzzedPlayer': null,
-        'currentRound/buzzedTeam': null,
-        'currentRound/playerAnswer': null,
-        'currentRound/phase': 'waiting_other'
-      });
-    }
+async function judgeWrong() {
+  const round = lastState?.currentRound;
+  if (!round?.buzzedTeam || !currentQuestion) return;
+  playWrong();
+  const wrongTeam = round.buzzedTeam;
+  const otherTeam = wrongTeam === 'red' ? 'blue' : 'red';
+  showToast(`❌ إجابة خاطئة! الفرصة الآن للفريق ${otherTeam === 'red' ? 'الأحمر' : 'الأزرق'}`, 'error');
+  
+  // Give the other team 10 seconds to answer directly (no buzz)
+  await updateGameState(roomCode, {
+    'currentRound/activeTeam': otherTeam,
+    'currentRound/timerEnd': Date.now() + 10000,
+    'currentRound/timerActive': true,
+    'currentRound/buzzedPlayer': null,
+    'currentRound/buzzedTeam': null,
+    'currentRound/playerAnswer': null,
+    'currentRound/phase': 'waiting_other'
+  });
+}
 
     async function skipQuestion() {
       await resetRound(roomCode);
