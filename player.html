@@ -233,34 +233,40 @@
         stopTimer();
       }
       else if (isWaitingOther) {
-        phaseBar.classList.add('phase-idle');
-        if (round.activeTeam === myTeam) {
-          phaseBar.textContent = '⏳ دور فريقك! اكتب الإجابة';
-          answerDiv.classList.remove('hidden');
-        } else {
-          phaseBar.textContent = `⏳ فريق ${round.activeTeam==='red'?'الأحمر':'الأزرق'} يجيب`;
-        }
-        timerSec.style.display = 'block';
-        startClientTimer(round.timerEnd);
-      }
+  phaseBar.classList.add('phase-idle');
+  if (round.activeTeam === myTeam) {
+    phaseBar.textContent = '⏳ دور فريقك للإجابة! اكتب الإجابة فوراً.';
+    answerDiv.classList.remove('hidden');
+  } else {
+    phaseBar.textContent = `⏳ فريق ${round.activeTeam === 'red' ? 'الأحمر' : 'الأزرق'} يجيب الآن.`;
+  }
+  timerSec.style.display = 'block';
+  startClientTimer(round.timerEnd);
+}
     }
 
     async function buzz() {
-      if (hasBuzzed) return;
-      const round = lastState?.currentRound;
-      if (!round || round.phase !== 'active' || !round.timerActive) {
-        showToast('لا يمكن الضغط الآن', 'error');
-        return;
-      }
-      if (round.buzzedPlayer) { showToast('شخص آخر ضغط قبلك!', 'warning'); return; }
-      hasBuzzed = true;
-      playBuzz();
-      document.getElementById('buzz-btn').disabled = true;
-      try {
-        await buzzIn(roomCode, myName, myTeam);
-        showToast('ضغطت! اكتب إجابتك', 'success');
-      } catch(e) { hasBuzzed = false; document.getElementById('buzz-btn').disabled = false; }
-    }
+  if (hasBuzzed) return;
+  const round = lastState?.currentRound;
+  if (!round || round.phase !== 'active' || !round.timerActive) {
+    showToast('لا يمكن الضغط الآن', 'error');
+    return;
+  }
+  if (round.buzzedPlayer) { showToast('شخص آخر ضغط قبلك!', 'warning'); return; }
+  hasBuzzed = true;
+  playBuzz();
+  document.getElementById('buzz-btn').disabled = true;
+  
+  console.log("Buzzing with name:", myName, "team:", myTeam); // Debug
+  try {
+    await buzzIn(roomCode, myName, myTeam);
+    showToast('ضغطت! اكتب إجابتك', 'success');
+  } catch(e) { 
+    hasBuzzed = false; 
+    document.getElementById('buzz-btn').disabled = false;
+    console.error(e);
+  }
+}
 
     async function submitPlayerAnswer() {
       const ans = document.getElementById('p-answer-input').value.trim();
