@@ -142,8 +142,10 @@ async function startTimer(roomCode, team, durationSeconds = 10) {
 async function buzzIn(roomCode, playerName, team) {
   await ensureFirebase();
   const { ref, update } = window.firebaseModules;
+  // Ensure playerName is a string
+  const name = String(playerName || "لاعب");
   await update(ref(db, `rooms/${roomCode}/currentRound`), {
-    buzzedPlayer: playerName,   // make sure this is a string
+    buzzedPlayer: name,
     buzzedTeam: team,
     timerActive: false,
     phase: 'buzzed'
