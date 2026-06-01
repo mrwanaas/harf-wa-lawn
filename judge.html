@@ -308,13 +308,14 @@
       document.getElementById('winner-modal').classList.remove('hidden');
       playCelebration();
     }
-    window.setCategory = setCategory;
-    window.generateQuestion = generateQuestion;
-    window.startRound = startRound;
-    window.judgeCorrect = judgeCorrect;
-    window.judgeWrong = judgeWrong;
-    window.skipQuestion = skipQuestion;
-    window.confirmEndGame = confirmEndGame;
+// Explicitly expose judge functions to global scope
+window.judgeCorrect = judgeCorrect;
+window.judgeWrong = judgeWrong;
+window.startRound = startRound;
+window.generateQuestion = generateQuestion;
+window.skipQuestion = skipQuestion;
+window.confirmEndGame = confirmEndGame;
+window.setCategory = setCategory;
   </script>
 </body>
 </html>
