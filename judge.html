@@ -242,8 +242,13 @@
     }
 
     async function judgeCorrect(){
-      const round = lastState?.currentRound;
-      if(!round?.buzzedTeam || !currentQuestion) return;
+console.log("judgeCorrect called");
+  const round = lastState?.currentRound;
+  console.log("Round data:", round);
+  if (!round?.buzzedTeam || !currentQuestion) {
+    console.log("Missing round or question");
+    return;
+  }
       await markLetterWon(roomCode, currentQuestion.firstLetter, round.buzzedTeam);
       addHistory(currentQuestion.firstLetter, round.buzzedTeam, currentQuestion.answer);
       playCelebration();
