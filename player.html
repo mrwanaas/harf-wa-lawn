@@ -251,27 +251,35 @@
       }
     }
 
-    async function buzz() {
-      if (hasBuzzed) return;
-      const round = lastState?.currentRound;
-      if (!round || round.phase !== 'active' || !round.timerActive) {
-        showToast('لا يمكن الضغط الآن', 'error');
-        return;
-      }
-      if (round.buzzedPlayer) { showToast('شخص آخر ضغط قبلك!', 'warning'); return; }
-      hasBuzzed = true;
-      playBuzz();
-      document.getElementById('buzz-btn').disabled = true;
-      console.log("Buzzing with name:", myName, "team:", myTeam);
-      try {
-        await buzzIn(roomCode, myName, myTeam);
-        showToast('ضغطت! اكتب إجابتك', 'success');
-      } catch(e) { 
-        hasBuzzed = false; 
-        document.getElementById('buzz-btn').disabled = false;
-        console.error(e);
-      }
-    }
+async function buzz() {
+  if (hasBuzzed) return;
+  const round = lastState?.currentRound;
+  if (!round || round.phase !== 'active' || !round.timerActive) {
+    showToast('لا يمكن الضغط الآن', 'error');
+    return;
+  }
+  if (round.buzzedPlayer) { showToast('شخص آخر ضغط قبلك!', 'warning'); return; }
+  
+  // Ensure myName is not empty
+  let playerName = myName;
+  if (!playerName || playerName === "لاعب") {
+    playerName = loadFromStorage('playerName') || getUrlParam('name') || "لاعب";
+    myName = playerName;
+  }
+  console.log("Buzzing with name:", playerName);
+  
+  hasBuzzed = true;
+  playBuzz();
+  document.getElementById('buzz-btn').disabled = true;
+  try {
+    await buzzIn(roomCode, playerName, myTeam);
+    showToast('ضغطت! اكتب إجابتك', 'success');
+  } catch(e) { 
+    hasBuzzed = false; 
+    document.getElementById('buzz-btn').disabled = false;
+    console.error(e);
+  }
+}
 
     async function submitPlayerAnswer() {
       const ans = document.getElementById('p-answer-input').value.trim();
