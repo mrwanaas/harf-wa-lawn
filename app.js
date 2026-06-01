@@ -1,17 +1,15 @@
 // ============================================================
-// SHARED GAME LOGIC - SIMPLIFIED & RELIABLE
+// SHARED GAME LOGIC - FULLY FIXED
 // ============================================================
 
 let db = null;
 let firebaseInitPromise = null;
 
-// Initialize Firebase immediately when script loads
-function initFirebase() {
+async function initFirebase() {
   if (firebaseInitPromise) return firebaseInitPromise;
   
   firebaseInitPromise = new Promise(async (resolve, reject) => {
     try {
-      // Wait for firebaseModules to be available (set by the module script)
       let attempts = 0;
       while (!window.firebaseModules && attempts < 50) {
         await new Promise(r => setTimeout(r, 100));
@@ -25,7 +23,6 @@ function initFirebase() {
       const app = initializeApp(FIREBASE_CONFIG);
       db = getDatabase(app);
       
-      // Store globally
       window.db = db;
       window.firebaseRef = ref;
       window.firebaseSet = set;
@@ -43,17 +40,14 @@ function initFirebase() {
       reject(err);
     }
   });
-  
   return firebaseInitPromise;
 }
 
-// Call this before any DB operation
 async function ensureFirebase() {
   if (db) return;
   await initFirebase();
 }
 
-// Room functions
 function generateRoomCode() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
@@ -112,10 +106,7 @@ async function addPlayerToRoom(roomCode, team, playerName, playerId) {
 }
 
 function subscribeToRoom(roomCode, callback) {
-  if (!db) {
-    console.warn("Firebase not ready, cannot subscribe");
-    return () => {};
-  }
+  if (!db) return () => {};
   const { ref, onValue } = window.firebaseModules;
   const roomRef = ref(db, `rooms/${roomCode}`);
   return onValue(roomRef, (snapshot) => {
@@ -138,7 +129,7 @@ async function startTimer(roomCode, team, durationSeconds = 10) {
   const { ref, set } = window.firebaseModules;
   const timerEnd = Date.now() + durationSeconds * 1000;
   await set(ref(db, `rooms/${roomCode}/currentRound`), {
-    activeTeam: team,   // null allowed
+    activeTeam: team,  // null means both teams can buzz
     timerEnd,
     timerActive: true,
     buzzedPlayer: null,
@@ -152,7 +143,10 @@ async function buzzIn(roomCode, playerName, team) {
   await ensureFirebase();
   const { ref, update } = window.firebaseModules;
   await update(ref(db, `rooms/${roomCode}/currentRound`), {
-    buzzedPlayer: playerName, buzzedTeam: team, timerActive: false, phase: 'buzzed'
+    buzzedPlayer: playerName,
+    buzzedTeam: team,
+    timerActive: false,
+    phase: 'buzzed'
   });
 }
 
@@ -160,7 +154,8 @@ async function submitAnswer(roomCode, answer) {
   await ensureFirebase();
   const { ref, update } = window.firebaseModules;
   await update(ref(db, `rooms/${roomCode}/currentRound`), {
-    playerAnswer: answer, phase: 'answered'
+    playerAnswer: answer,
+    phase: 'answered'
   });
 }
 
@@ -194,13 +189,18 @@ async function resetRound(roomCode) {
   await set(ref(db, `rooms/${roomCode}/currentQuestion`), null);
 }
 
+async function updateGameState(roomCode, updates) {
+  await ensureFirebase();
+  const { ref, update } = window.firebaseModules;
+  await update(ref(db, `rooms/${roomCode}`), updates);
+}
+
 async function endGame(roomCode) {
   await ensureFirebase();
   const { ref, update } = window.firebaseModules;
   await update(ref(db, `rooms/${roomCode}`), { status: 'ended' });
 }
 
-// Helper functions
 function encodeLetterKey(letter) {
   const map = { 'أ':'alef','ب':'ba','ت':'ta','ث':'tha','ج':'jeem','ح':'ha','خ':'kha','د':'dal','ذ':'dhal','ر':'ra','ز':'zay','س':'seen','ش':'sheen','ص':'sad','ض':'dad','ط':'taa','ظ':'dha','ع':'ayn','غ':'ghayn','ف':'fa','ق':'qaf','ك':'kaf','ل':'lam','م':'meem','ن':'noon','هـ':'haa','و':'waw','ي':'ya' };
   return map[letter] || letter;
@@ -211,7 +211,6 @@ function getTimeRemaining(timerEnd) {
   return Math.max(0, Math.ceil((timerEnd - Date.now()) / 1000));
 }
 
-// Toast
 function showToast(message, type = 'info', duration = 3000) {
   let container = document.getElementById('toast-container');
   if (!container) {
@@ -230,7 +229,6 @@ function showToast(message, type = 'info', duration = 3000) {
   }, duration);
 }
 
-// Storage
 function saveToStorage(key, value) {
   try { localStorage.setItem(`harf-lawn-${key}`, JSON.stringify(value)); } catch(e) {}
 }
@@ -246,7 +244,6 @@ function getOrCreatePlayerId() {
   return pid;
 }
 
-// URL helpers
 function getUrlParam(name) {
   return new URLSearchParams(window.location.search).get(name);
 }
@@ -256,7 +253,6 @@ function buildUrl(page, params = {}) {
   return url.toString();
 }
 
-// Render letter grid
 function renderLetterGrid(containerId, letters, highlightLetter = null) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -276,16 +272,42 @@ function renderLetterGrid(containerId, letters, highlightLetter = null) {
   });
 }
 
-// Sounds (simple)
-function playBuzz() { console.log("🔊 Buzz sound"); }
-function playTick() { console.log("⏰ Tick"); }
-function playCelebration() { console.log("🎉 Celebration"); }
-function playWrong() { console.log("❌ Wrong"); }
-function hideReconnecting() { 
+function hideReconnecting() {
   const el = document.getElementById('reconnect-overlay');
   if (el) el.style.display = 'none';
 }
-function isValidRoomCode(code) { return /^\d{6}$/.test(code); }
+function isValidRoomCode(code) {
+  return /^\d{6}$/.test(code);
+}
 
-// Initialize Firebase automatically
-initFirebase().catch(err => console.error(err));
+// Audio
+let audioCtx = null;
+function getAudioContext() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+  }
+  return audioCtx;
+}
+function playBeep(freq = 440, duration = 0.15, type = 'sine') {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = freq;
+    osc.type = type;
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration);
+  } catch(e) {}
+}
+function playBuzz() { playBeep(200,0.2,'sawtooth'); setTimeout(()=>playBeep(150,0.3,'sawtooth'),100); }
+function playTick() { playBeep(880,0.05,'square'); }
+function playCelebration() { const notes=[523,659,784,1047]; notes.forEach((f,i)=>setTimeout(()=>playBeep(f,0.15),i*120)); }
+function playWrong() { playBeep(200,0.4,'sawtooth'); }
+
+// Initialize
+initFirebase().catch(console.error);
